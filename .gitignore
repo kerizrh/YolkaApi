@@ -5,6 +5,10 @@ atlas-credentials.env
 *firebase-adminsdk*.json
 firebase-service-account.json
 service-account*.json
+client_secret*.json
+*googleusercontent.com.json
+*oauth*.json
+*credentials*.json
 application-local.yml
 application-secret.yml
 *.pem
