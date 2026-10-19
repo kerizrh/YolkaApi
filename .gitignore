@@ -28,12 +28,32 @@ target/
 *.rar
 hs_err_pid*
 replay_pid*
+### STS ###
+.apt_generated
+.classpath
+.factorypath
+.project
+.settings
+.springBeans
+.sts4-cache
 
 # IDEs y Sistema Operativo
 .idea/
 *.iws
 *.iml
 *.ipr
+
+### NetBeans ###
+/nbproject/private/
+/nbbuild/
+/dist/
+/nbdist/
+/.nb-gradle/
+build/
+!**/src/main/**/build/
+!**/src/test/**/build/
+
+### VS Code ###
 .vscode/
 .settings/
 .classpath
