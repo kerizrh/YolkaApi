@@ -46,19 +46,19 @@ public class EnvsConfig {
 	@Value("${GOOGLE_REDIRECT_URI:}")
 	private String googleRedirectUri;
 
-	@Value("${BACKUP_STORAGE_PATH:./uploads/backups}")
+	@Value("${BACKUP_STORAGE_PATH:}")
 	private String backupStoragePath;
 
-	@Value("${SMTP_HOST:${MAIL_HOST:smtp.gmail.com}}")
+	@Value("${SMTP_HOST:${MAIL_HOST:}")
 	private String smtpHost;
 
-	@Value("${SMTP_PORT:${MAIL_PORT:587}}")
+	@Value("${SMTP_PORT:}")
 	private int smtpPort;
 
-	@Value("${SMTP_USER:${MAIL_USER:${MAILER_EMAIL:}}}")
+	@Value("${SMTP_USER:${MAIL_USER:}")
 	private String smtpUser;
 
-	@Value("${SMTP_PASS:${MAIL_PASSWORD:${MAILER_SECRET_KEY:}}}")
+	@Value("${SMTP_PASS:${MAIL_PASSWORD:}")
 	private String smtpPass;
 
 	private final List<String> allowedGoogleClientIds = new ArrayList<>();
