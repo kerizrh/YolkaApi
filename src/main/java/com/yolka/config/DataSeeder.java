@@ -1,12 +1,19 @@
 package com.yolka.config;
 
-import com.yolka.models.TipDocument;
-import com.yolka.models.VetClinicDocument;
+import com.yolka.helpers.UuidGeneratorHelper;
+import com.yolka.models.*;
 import com.yolka.repositories.TipRepository;
 import com.yolka.repositories.VetClinicRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.CommandLineRunner;
+import org.springframework.data.mongodb.core.MongoTemplate;
+import org.springframework.data.mongodb.core.index.IndexOperations;
+import org.springframework.data.mongodb.core.index.IndexResolver;
+import org.springframework.data.mongodb.core.index.MongoPersistentEntityIndexResolver;
+import org.springframework.data.mongodb.core.query.Criteria;
+import org.springframework.data.mongodb.core.query.Query;
+import org.springframework.data.mongodb.core.query.Update;
 import org.springframework.stereotype.Component;
 
 import java.util.List;
@@ -18,33 +25,87 @@ public class DataSeeder implements CommandLineRunner {
 
 	private final TipRepository tipRepository;
 	private final VetClinicRepository vetClinicRepository;
+	private final MongoTemplate mongoTemplate;
 
 	@Override
 	public void run(String... args) {
 		try {
+			backfillMissingUuids();
+			ensureAllIndexes();
+
 			if (tipRepository.count() == 0) {
 				seedTips();
-			} else {
-				tipRepository.findAll().forEach(tip -> {
-					if (tip.getUuid() == null || tip.getUuid().isBlank()) {
-						tip.setUuid(tip.getId() != null ? tip.getId() : com.yolka.helpers.UuidGeneratorHelper.newUuid());
-						tipRepository.save(tip);
-					}
-				});
 			}
 			if (vetClinicRepository.count() == 0) {
 				seedVetClinics();
-			} else {
-				vetClinicRepository.findAll().forEach(clinic -> {
-					if (clinic.getUuid() == null || clinic.getUuid().isBlank()) {
-						clinic.setUuid(clinic.getId() != null ? clinic.getId() : com.yolka.helpers.UuidGeneratorHelper.newUuid());
-						vetClinicRepository.save(clinic);
-					}
-				});
 			}
 		} catch (Exception e) {
 			log.warn("DataSeeder skipped or encountered an error: {}", e.getMessage());
 		}
+	}
+
+	private void backfillMissingUuids() {
+		List<Class<?>> docClasses = List.of(
+				UserDocument.class,
+				PetDocument.class,
+				TipDocument.class,
+				VetClinicDocument.class,
+				NotificationDocument.class,
+				BackupDocument.class
+		);
+		for (Class<?> clazz : docClasses) {
+			try {
+				Query missingUuidQuery = new Query(new Criteria().orOperator(
+						Criteria.where("uuid").isNull(),
+						Criteria.where("uuid").exists(false)
+				));
+				mongoTemplate.find(missingUuidQuery, clazz).forEach(doc -> {
+					mongoTemplate.save(doc);
+				});
+				// Also ensure any raw document without uuid gets one via direct collection check
+				String collectionName = mongoTemplate.getCollectionName(clazz);
+				mongoTemplate.getCollection(collectionName)
+						.find(new org.bson.Document("$or", List.of(
+								new org.bson.Document("uuid", null),
+								new org.bson.Document("uuid", new org.bson.Document("$exists", false))
+						)))
+						.forEach(rawDoc -> {
+							Object idObj = rawDoc.get("_id");
+							String newUuid = (idObj != null) ? idObj.toString() : UuidGeneratorHelper.newUuid();
+							mongoTemplate.getCollection(collectionName).updateOne(
+									new org.bson.Document("_id", idObj),
+									new org.bson.Document("$set", new org.bson.Document("uuid", newUuid)
+											.append("deleted", rawDoc.getBoolean("deleted", false)))
+							);
+						});
+			} catch (Exception e) {
+				log.debug("Backfill uuid check for {}: {}", clazz.getSimpleName(), e.getMessage());
+			}
+		}
+	}
+
+	private void ensureAllIndexes() {
+		IndexResolver resolver = new MongoPersistentEntityIndexResolver(mongoTemplate.getConverter().getMappingContext());
+		List<Class<?>> entities = List.of(
+				UserDocument.class,
+				PetDocument.class,
+				TipDocument.class,
+				VetClinicDocument.class,
+				NotificationDocument.class,
+				BackupDocument.class,
+				ProcessTokenDocument.class
+		);
+		for (Class<?> entity : entities) {
+			IndexOperations indexOps = mongoTemplate.indexOps(entity);
+			resolver.resolveIndexFor(entity).forEach(indexDefinition -> {
+				try {
+					indexOps.createIndex(indexDefinition);
+				} catch (Exception ex) {
+					log.debug("Index already exists or skipped on {}: {}", entity.getSimpleName(), ex.getMessage());
+				}
+			});
+		}
+		log.info("MongoDB unique and compound indexes verified successfully");
 	}
 
 	private void seedTips() {
