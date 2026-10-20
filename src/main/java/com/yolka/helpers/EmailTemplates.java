@@ -36,6 +36,37 @@ public class EmailTemplates {
 				""".formatted(userName != null ? userName : "Propietario", confirmationUrl, token);
 	}
 
+	public String reactivateAccountTemplate(String userName, String confirmationUrl, String token) {
+		return """
+				<!DOCTYPE html>
+				<html lang="es">
+				<head><meta charset="UTF-8"><title>Reactivación de tu cuenta en Yolka</title></head>
+				<body style="font-family: Arial, sans-serif; background-color: #F7F9FC; padding: 24px;">
+				  <div style="max-width: 520px; margin: 0 auto; background: #FFFFFF; border-radius: 16px; border-top: 12px solid #FF7A59; padding: 28px; box-shadow: 0 2px 10px rgba(0,0,0,0.06);">
+				    <h1 style="color: #FF7A59; margin-top: 0; font-size: 28px;">¡Bienvenido de vuelta a Yolka! 🐾</h1>
+				    <p style="color: #334155; font-size: 16px; line-height: 1.6;">
+				      ¡Hola de nuevo, <strong>%s</strong>!
+				    </p>
+				    <p style="color: #334155; line-height: 1.6;">
+				      Tu cuenta ha sido reactivada exitosamente. Haz clic en el siguiente botón para confirmar la reactivación de tu cuenta:
+				    </p>
+				    <div style="text-align: center; margin: 28px 0;">
+				      <a href="%s" target="_blank" style="background-color: #FF7A59; color: #FFFFFF; text-decoration: none; padding: 14px 28px; border-radius: 8px; font-weight: bold; font-size: 16px; display: inline-block;">
+				        Confirmar reactivación
+				      </a>
+				    </div>
+				    <p style="color: #475569; font-size: 13px; text-align: center;">
+				      O utiliza este código de confirmación: <strong>%s</strong>
+				    </p>
+				    <p style="color: #64748B; font-size: 12px; margin-top: 24px; text-align: center;">
+				      Este enlace expira en 10 minutos.
+				    </p>
+				  </div>
+				</body>
+				</html>
+				""".formatted(userName != null ? userName : "Propietario", confirmationUrl, token);
+	}
+
 	public String confirmedPageHtml(String userName) {
 		return """
 				<!DOCTYPE html>

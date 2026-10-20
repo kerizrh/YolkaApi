@@ -39,13 +39,41 @@ public class AuthService {
 		}
 
 		String normalizedEmail = request.email().trim().toLowerCase();
-		if (userRepository.existsByEmailIgnoreCaseAndDeletedFalse(normalizedEmail)) {
-			throw CustomError.badRequest("Ya existe un usuario con el correo " + normalizedEmail, "USER_ALREADY_EXISTS");
-		}
-
 		String[] nameParts = request.fullName().trim().split("\\s+", 2);
 		String firstName = nameParts[0];
 		String lastName = nameParts.length > 1 ? nameParts[1] : "";
+
+		UserDocument existingUser = userRepository.findFirstByEmailIgnoreCase(normalizedEmail).orElse(null);
+		if (existingUser != null) {
+			if (!existingUser.isDeleted()) {
+				throw CustomError.badRequest("Ya existe un usuario con el correo " + normalizedEmail, "USER_ALREADY_EXISTS");
+			}
+
+			// Reactivar usuario previamente eliminado (Soft Delete) sin crear otro documento
+			existingUser.setFullName(request.fullName().trim());
+			existingUser.setFirstName(firstName);
+			existingUser.setLastName(lastName);
+			existingUser.setPassword(hashPasswordsHelper.hash(request.password()));
+			if (request.phone() != null && !request.phone().isBlank()) {
+				existingUser.setPhone(request.phone().trim());
+			}
+			existingUser.setConfirmed(false);
+			existingUser.setDeleted(false);
+			existingUser.setDeletedAt(null);
+			existingUser.setUpdatedAt(Instant.now());
+
+			updateUserDevice(existingUser, request.deviceId(), request.deviceToken());
+			existingUser = userRepository.save(existingUser);
+
+			sendConfirmationEmail(existingUser, true);
+
+			return issueTokensAndBuildResponse(
+					existingUser,
+					request.deviceId(),
+					"Cuenta reactivada exitosamente. Hemos enviado un correo para confirmar la reactivación de tu cuenta."
+			);
+		}
+
 		String uid = uuidGeneratorHelper.generate();
 
 		UserDocument newUser = UserDocument.builder()
@@ -67,7 +95,7 @@ public class AuthService {
 		updateUserDevice(newUser, request.deviceId(), request.deviceToken());
 		newUser = userRepository.save(newUser);
 
-		sendConfirmationEmail(newUser);
+		sendConfirmationEmail(newUser, false);
 
 		return issueTokensAndBuildResponse(
 				newUser,
@@ -77,6 +105,10 @@ public class AuthService {
 	}
 
 	private void sendConfirmationEmail(UserDocument user) {
+		sendConfirmationEmail(user, false);
+	}
+
+	private void sendConfirmationEmail(UserDocument user, boolean isReactivation) {
 		String confirmToken = String.format("%06d", secureRandom.nextInt(1_000_000));
 		ProcessTokenDocument tokenDoc = ProcessTokenDocument.builder()
 				.id(uuidGeneratorHelper.generate())
@@ -92,11 +124,14 @@ public class AuthService {
 		String baseUrl = envsConfig.getBaseUrl() != null ? envsConfig.getBaseUrl().trim().replaceAll("/+$", "") : "";
 		String confirmationUrl = baseUrl + "/auth/confirm-account?token=" + confirmToken;
 
-		mailService.sendEmail(
-				user.getEmail(),
-				"Confirma tu cuenta en Yolka 🐾",
-				emailTemplates.confirmAccountTemplate(user.getFirstName(), confirmationUrl, confirmToken)
-		);
+		String subject = isReactivation
+				? "Reactivación de tu cuenta en Yolka 🐾"
+				: "Confirma tu cuenta en Yolka 🐾";
+		String htmlBody = isReactivation
+				? emailTemplates.reactivateAccountTemplate(user.getFirstName(), confirmationUrl, confirmToken)
+				: emailTemplates.confirmAccountTemplate(user.getFirstName(), confirmationUrl, confirmToken);
+
+		mailService.sendEmail(user.getEmail(), subject, htmlBody);
 	}
 
 	public String confirmAccountByLink(String token) {
@@ -182,7 +217,8 @@ public class AuthService {
 		}
 
 		String normalizedEmail = googleUser.email().trim().toLowerCase();
-		UserDocument user = userRepository.findByEmailIgnoreCaseAndDeletedFalse(normalizedEmail).orElse(null);
+		UserDocument user = userRepository.findFirstByEmailIgnoreCase(normalizedEmail).orElse(null);
+		boolean wasDeleted = false;
 
 		if (user == null) {
 			String fullName = (googleUser.name() != null && !googleUser.name().isBlank())
@@ -209,8 +245,11 @@ public class AuthService {
 					.updatedAt(Instant.now())
 					.build();
 		} else {
+			wasDeleted = user.isDeleted();
 			user.setGoogleId(googleUser.sub());
-			user.setConfirmed(true);
+			user.setDeleted(false);
+			user.setDeletedAt(null);
+			user.setConfirmed(!wasDeleted);
 			if (user.getPhotoUrl() == null || user.getPhotoUrl().isBlank()) {
 				user.setPhotoUrl(googleUser.picture());
 			}
@@ -220,7 +259,17 @@ public class AuthService {
 		updateUserDevice(user, request.deviceId(), request.deviceToken());
 		user = userRepository.save(user);
 
-		return issueTokensAndBuildResponse(user, request.deviceId(), "Autenticación con Google exitosa");
+		if (wasDeleted) {
+			sendConfirmationEmail(user, true);
+		}
+
+		return issueTokensAndBuildResponse(
+				user,
+				request.deviceId(),
+				wasDeleted
+						? "Cuenta reactivada con Google exitosamente. Hemos enviado un correo para confirmar la reactivación."
+						: "Autenticación con Google exitosa"
+		);
 	}
 
 	public Map<String, Object> recoverPassword(RecoverPasswordRequest request) {

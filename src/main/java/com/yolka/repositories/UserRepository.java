@@ -10,5 +10,6 @@ import java.util.Optional;
 public interface UserRepository extends MongoRepository<UserDocument, String> {
 	Optional<UserDocument> findByIdAndDeletedFalse(String id);
 	Optional<UserDocument> findByEmailIgnoreCaseAndDeletedFalse(String email);
+	Optional<UserDocument> findFirstByEmailIgnoreCase(String email);
 	boolean existsByEmailIgnoreCaseAndDeletedFalse(String email);
 }
