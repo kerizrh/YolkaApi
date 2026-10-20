@@ -23,25 +23,25 @@ PORT=8080
 BASE_URL=http://localhost:8080/api/v1
 
 # MongoDB Atlas (sin comillas alrededor de la URI)
-MONGODB_URI=mongodb+srv://<usuario>:<password>@<cluster>.mongodb.net/yolka_db?appName=YolkaDB
-MONGO_DB_NAME=yolka_db
+MONGODB_URI=MONGODB_URI
+MONGO_DB_NAME=MONGO_DB_NAME
 
 # Seguridad JWT y Cifrado AES-256-GCM (Respaldos .yolka)
 JWT_SECRET=<tu_jwt_secret_seguro>
 ENCRYPTION_KEY=<tu_encryption_key_32_bytes>
 
 # Rutas de credenciales JSON
-FIREBASE_ADMIN_CREDENTIALS_JSON_PATH=config/firebase/<tu-archivo-firebase-adminsdk>.json
-GOOGLE_OAUTH_JSON_PATH=config/googleapis/<tu-archivo-client-secret>.json
+FIREBASE_ADMIN_CREDENTIALS_JSON_PATH=FIREBASE_ADMIN_CREDENTIALS_JSON_PATH
+GOOGLE_OAUTH_JSON_PATH=GOOGLE_OAUTH_JSON_PATH
 
 # Almacenamiento de respaldos cifrados
-BACKUP_STORAGE_PATH=./uploads/backups
+BACKUP_STORAGE_PATH=BACKUP_STORAGE_PATH
 
 # Servidor SMTP (Opcional en desarrollo: si se deja vacío, los enlaces/códigos se muestran en consola)
-SMTP_HOST=smtp.gmail.com
-SMTP_PORT=587
-SMTP_USER=
-SMTP_PASS=
+SMTP_HOST=SMTP_HOS
+SMTP_PORT=SMTP_PORT
+SMTP_USER=SMTP_USER
+SMTP_PASS=SMTP_PASS
 ```
 
 > **Nota importante sobre `MONGODB_URI`:** No coloques comillas dobles (`"..."`) alrededor del valor en el archivo `.env`, ya que Spring Boot interpreta las comillas literalmente como parte del esquema de conexión.
@@ -53,7 +53,7 @@ SMTP_PASS=
 Abre una terminal PowerShell en la carpeta `YolkaApi`:
 
 ```powershell
-cd G:\Yolka\YolkaApi
+cd \YolkaApi
 ```
 
 ### 1. Ejecutar el servidor (Modo normal)
