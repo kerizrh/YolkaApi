@@ -8,7 +8,7 @@
   "variable": [
     {
       "key": "baseUrl",
-      "value": "http://localhost:8080/api/v1",
+      "value": "http://localhost:8080/api/",
       "type": "string"
     },
     {
@@ -96,7 +96,39 @@
           }
         },
         {
-          "name": "1.3 Solicitar Recuperación de Contraseña",
+          "name": "1.3 Login / Registro con Google",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const res = pm.response.json();",
+                  "if (res.token) pm.collectionVariables.set('token', res.token);",
+                  "if (res.user && res.user.id) pm.collectionVariables.set('userId', res.user.id);"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "x-client-type", "value": "mobile" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"idToken\": \"PEGA_AQUI_EL_ID_TOKEN_DE_GOOGLE\",\n  \"deviceId\": \"emulator-5554\",\n  \"deviceToken\": \"fcm-demo-token-123\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/auth/google",
+              "host": ["{{baseUrl}}"],
+              "path": ["auth", "google"]
+            }
+          }
+        },
+        {
+          "name": "1.4 Solicitar Recuperación de Contraseña",
           "request": {
             "method": "POST",
             "header": [

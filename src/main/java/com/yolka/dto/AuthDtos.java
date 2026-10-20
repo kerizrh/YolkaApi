@@ -43,6 +43,14 @@ public class AuthDtos {
 			@NotBlank(message = "La nueva contraseña es obligatoria") String newPassword
 	) {}
 
+	public record ConfirmAccountRequest(
+			@NotBlank(message = "El token o código de confirmación es obligatorio") String token
+	) {}
+
+	public record RequestConfirmationRequest(
+			@NotBlank(message = "El correo es obligatorio") @Email(message = "Formato de correo inválido") String email
+	) {}
+
 	public record UserResponse(
 			String id,
 			String fullName,
@@ -53,6 +61,7 @@ public class AuthDtos {
 			String photoUrl,
 			String authProvider,
 			boolean google,
+			boolean confirmed,
 			UserDocument.UserPreferences preferences,
 			List<UserDocument.DeviceInfo> activeDevices,
 			boolean hasDeviceBackup,
@@ -70,6 +79,7 @@ public class AuthDtos {
 					doc.getPhotoUrl(),
 					doc.getAuthProvider(),
 					"GOOGLE".equalsIgnoreCase(doc.getAuthProvider()) || (doc.getGoogleId() != null && !doc.getGoogleId().isBlank()),
+					doc.isConfirmed(),
 					doc.getPreferences(),
 					doc.getActiveDevices(),
 					doc.isHasDeviceBackup(),

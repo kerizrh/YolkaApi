@@ -1,5 +1,6 @@
 package com.yolka.services;
 
+import com.yolka.config.EnvsConfig;
 import com.yolka.dto.AuthDtos.*;
 import com.yolka.helpers.*;
 import com.yolka.helpers.GoogleVerifyHelper.GoogleUserPayload;
@@ -28,6 +29,7 @@ public class AuthService {
 	private final UuidGeneratorHelper uuidGeneratorHelper;
 	private final MailService mailService;
 	private final EmailTemplates emailTemplates;
+	private final EnvsConfig envsConfig;
 	private final SecureRandom secureRandom = new SecureRandom();
 
 	public AuthResponse register(RegisterRequest request) {
@@ -56,6 +58,7 @@ public class AuthService {
 				.password(hashPasswordsHelper.hash(request.password()))
 				.phone(request.phone() != null ? request.phone().trim() : "")
 				.authProvider("LOCAL")
+				.confirmed(false)
 				.deleted(false)
 				.createdAt(Instant.now())
 				.updatedAt(Instant.now())
@@ -64,13 +67,92 @@ public class AuthService {
 		updateUserDevice(newUser, request.deviceId(), request.deviceToken());
 		newUser = userRepository.save(newUser);
 
-		mailService.sendEmail(
-				newUser.getEmail(),
-				"¡Bienvenido a Yolka!",
-				emailTemplates.welcomeTemplate(newUser.getFirstName())
-		);
+		sendConfirmationEmail(newUser);
 
-		return issueTokensAndBuildResponse(newUser, request.deviceId(), "Usuario registrado exitosamente");
+		return issueTokensAndBuildResponse(
+				newUser,
+				request.deviceId(),
+				"Usuario registrado exitosamente. Hemos enviado un enlace y código de confirmación a tu correo electrónico."
+		);
+	}
+
+	private void sendConfirmationEmail(UserDocument user) {
+		String confirmToken = String.format("%06d", secureRandom.nextInt(1_000_000));
+		ProcessTokenDocument tokenDoc = ProcessTokenDocument.builder()
+				.id(uuidGeneratorHelper.generate())
+				.token(confirmToken)
+				.type("accountConfirmation")
+				.userId(user.getId())
+				.deviceId("email-confirm")
+				.expires(Instant.now().plusSeconds(10 * 60))
+				.deleted(false)
+				.build();
+		processTokenRepository.save(tokenDoc);
+
+		String baseUrl = envsConfig.getBaseUrl() != null ? envsConfig.getBaseUrl().trim().replaceAll("/+$", "") : "";
+		String confirmationUrl = baseUrl + "/auth/confirm-account?token=" + confirmToken;
+
+		mailService.sendEmail(
+				user.getEmail(),
+				"Confirma tu cuenta en Yolka 🐾",
+				emailTemplates.confirmAccountTemplate(user.getFirstName(), confirmationUrl, confirmToken)
+		);
+	}
+
+	public String confirmAccountByLink(String token) {
+		UserDocument user = verifyAndConsumeConfirmationToken(token);
+		return emailTemplates.confirmedPageHtml(user.getFirstName());
+	}
+
+	public Map<String, Object> confirmAccountByCode(ConfirmAccountRequest request) {
+		UserDocument user = verifyAndConsumeConfirmationToken(request.token());
+		return Map.of(
+				"success", true,
+				"message", "Cuenta confirmada exitosamente",
+				"user", UserResponse.fromDocument(user)
+		);
+	}
+
+	public Map<String, Object> requestAccountConfirmation(RequestConfirmationRequest request) {
+		String normalizedEmail = request.email().trim().toLowerCase();
+		UserDocument user = userRepository.findByEmailIgnoreCaseAndDeletedFalse(normalizedEmail)
+				.orElseThrow(() -> CustomError.notFound("Usuario no encontrado", "USER_NOT_FOUND"));
+
+		if (user.isConfirmed()) {
+			throw CustomError.badRequest("La cuenta ya se encuentra confirmada", "ACCOUNT_ALREADY_CONFIRMED");
+		}
+
+		sendConfirmationEmail(user);
+		return Map.of(
+				"success", true,
+				"message", "Se ha enviado un nuevo enlace y código de confirmación a tu correo electrónico"
+		);
+	}
+
+	private UserDocument verifyAndConsumeConfirmationToken(String token) {
+		if (token == null || token.isBlank()) {
+			throw CustomError.badRequest("El token de confirmación es obligatorio", "CONFIRMATION_TOKEN_REQUIRED");
+		}
+
+		ProcessTokenDocument tokenDoc = processTokenRepository.findByTokenAndTypeAndDeletedFalse(token.trim(), "accountConfirmation")
+				.orElseThrow(() -> CustomError.badRequest("Código o enlace de confirmación inválido", "INVALID_CONFIRMATION_TOKEN"));
+
+		if (tokenDoc.getExpires().isBefore(Instant.now())) {
+			throw CustomError.badRequest("El enlace o código de confirmación ha expirado. Solicita uno nuevo.", "EXPIRED_CONFIRMATION_TOKEN");
+		}
+
+		UserDocument user = userRepository.findByIdAndDeletedFalse(tokenDoc.getUserId())
+				.orElseThrow(() -> CustomError.notFound("Usuario no encontrado", "USER_NOT_FOUND"));
+
+		user.setConfirmed(true);
+		user.setUpdatedAt(Instant.now());
+		user = userRepository.save(user);
+
+		tokenDoc.setDeleted(true);
+		tokenDoc.setDeletedAt(Instant.now());
+		processTokenRepository.save(tokenDoc);
+
+		return user;
 	}
 
 	public AuthResponse login(LoginRequest request) {
@@ -121,12 +203,14 @@ public class AuthService {
 					.authProvider("GOOGLE")
 					.googleId(googleUser.sub())
 					.photoUrl(googleUser.picture())
+					.confirmed(true)
 					.deleted(false)
 					.createdAt(Instant.now())
 					.updatedAt(Instant.now())
 					.build();
 		} else {
 			user.setGoogleId(googleUser.sub());
+			user.setConfirmed(true);
 			if (user.getPhotoUrl() == null || user.getPhotoUrl().isBlank()) {
 				user.setPhotoUrl(googleUser.picture());
 			}

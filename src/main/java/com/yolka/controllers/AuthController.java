@@ -41,4 +41,19 @@ public class AuthController {
 	public ResponseEntity<Map<String, Object>> resetPassword(@Valid @RequestBody ResetPasswordRequest request) {
 		return ResponseEntity.ok(authService.resetPassword(request));
 	}
+
+	@GetMapping(value = "/confirm-account", produces = "text/html;charset=UTF-8")
+	public ResponseEntity<String> confirmAccountByLink(@RequestParam("token") String token) {
+		return ResponseEntity.ok(authService.confirmAccountByLink(token));
+	}
+
+	@PostMapping("/confirm-account")
+	public ResponseEntity<Map<String, Object>> confirmAccountByCode(@Valid @RequestBody ConfirmAccountRequest request) {
+		return ResponseEntity.ok(authService.confirmAccountByCode(request));
+	}
+
+	@PostMapping("/request-confirmation")
+	public ResponseEntity<Map<String, Object>> requestAccountConfirmation(@Valid @RequestBody RequestConfirmationRequest request) {
+		return ResponseEntity.ok(authService.requestAccountConfirmation(request));
+	}
 }

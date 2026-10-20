@@ -46,6 +46,9 @@ public class UserDocument {
 	@Builder.Default
 	private String authProvider = "LOCAL"; // LOCAL | GOOGLE
 
+	@Builder.Default
+	private boolean confirmed = false;
+
 	@Indexed(sparse = true)
 	private String googleId;
 

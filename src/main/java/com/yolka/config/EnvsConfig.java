@@ -19,8 +19,11 @@ import java.util.List;
 @Configuration
 public class EnvsConfig {
 
-	@Value("${PORT:8080}")
+	@Value("${PORT:}")
 	private int port;
+
+	@Value("${BASE_URL:}")
+	private String baseUrl;
 
 	@Value("${JWT_SECRET:}")
 	private String jwtSecret;
