@@ -24,7 +24,7 @@ public class VetClinicDocument {
 	@Builder.Default
 	private String id = UuidGeneratorHelper.newUuid();
 
-	@Indexed(unique = true)
+	@Indexed(unique = true, sparse = true)
 	@Builder.Default
 	private String uuid = UuidGeneratorHelper.newUuid();
 

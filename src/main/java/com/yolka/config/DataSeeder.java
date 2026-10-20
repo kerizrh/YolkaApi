@@ -24,9 +24,23 @@ public class DataSeeder implements CommandLineRunner {
 		try {
 			if (tipRepository.count() == 0) {
 				seedTips();
+			} else {
+				tipRepository.findAll().forEach(tip -> {
+					if (tip.getUuid() == null || tip.getUuid().isBlank()) {
+						tip.setUuid(tip.getId() != null ? tip.getId() : com.yolka.helpers.UuidGeneratorHelper.newUuid());
+						tipRepository.save(tip);
+					}
+				});
 			}
 			if (vetClinicRepository.count() == 0) {
 				seedVetClinics();
+			} else {
+				vetClinicRepository.findAll().forEach(clinic -> {
+					if (clinic.getUuid() == null || clinic.getUuid().isBlank()) {
+						clinic.setUuid(clinic.getId() != null ? clinic.getId() : com.yolka.helpers.UuidGeneratorHelper.newUuid());
+						vetClinicRepository.save(clinic);
+					}
+				});
 			}
 		} catch (Exception e) {
 			log.warn("DataSeeder skipped or encountered an error: {}", e.getMessage());

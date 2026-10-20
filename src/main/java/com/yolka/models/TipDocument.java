@@ -27,7 +27,7 @@ public class TipDocument {
 	@Builder.Default
 	private String id = UuidGeneratorHelper.newUuid();
 
-	@Indexed(unique = true)
+	@Indexed(unique = true, sparse = true)
 	@Builder.Default
 	private String uuid = UuidGeneratorHelper.newUuid();
 
