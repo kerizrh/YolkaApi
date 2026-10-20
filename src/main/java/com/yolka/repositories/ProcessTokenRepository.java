@@ -11,4 +11,5 @@ import java.util.Optional;
 public interface ProcessTokenRepository extends MongoRepository<ProcessTokenDocument, String> {
 	Optional<ProcessTokenDocument> findByTokenAndTypeAndDeletedFalse(String token, String type);
 	List<ProcessTokenDocument> findByUserIdAndDeletedFalse(String userId);
+	List<ProcessTokenDocument> findByUserIdAndDeviceIdAndDeletedFalse(String userId, String deviceId);
 }

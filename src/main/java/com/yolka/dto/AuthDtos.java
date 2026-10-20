@@ -51,6 +51,16 @@ public class AuthDtos {
 			@NotBlank(message = "El correo es obligatorio") @Email(message = "Formato de correo inválido") String email
 	) {}
 
+	public record LogoutRequest(
+			String deviceId,
+			String refreshToken
+	) {}
+
+	public record RefreshTokenRequest(
+			@NotBlank(message = "El refreshToken es obligatorio") String refreshToken,
+			String deviceId
+	) {}
+
 	public record UserResponse(
 			String id,
 			String fullName,

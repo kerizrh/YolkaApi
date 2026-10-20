@@ -2,7 +2,7 @@
   "info": {
     "_postman_id": "d8b47d10-91a3-4b5a-8e77-019283746501",
     "name": "Yolka API — Colección Completa",
-    "description": "Colección de pruebas para los 10 módulos de YolkaApi (Spring Boot + MongoDB Atlas). Incluye scripts automáticos que guardan el token (x-token), userId y petId al ejecutar Login/Registro y Crear Mascota.",
+    "description": "Colección completa de los 10 módulos de YolkaApi (Spring Boot + MongoDB Atlas). Incluye scripts automáticos que guardan el token (x-token), refreshToken, userId, petId y reminderId al ejecutar Login/Registro y Crear Mascota.",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "variable": [
@@ -17,6 +17,11 @@
       "type": "string"
     },
     {
+      "key": "refreshToken",
+      "value": "",
+      "type": "string"
+    },
+    {
       "key": "userId",
       "value": "",
       "type": "string"
@@ -25,11 +30,16 @@
       "key": "petId",
       "value": "",
       "type": "string"
+    },
+    {
+      "key": "reminderId",
+      "value": "",
+      "type": "string"
     }
   ],
   "item": [
     {
-      "name": "1. Autenticación (Módulo 1)",
+      "name": "1. Autenticación y Sesiones (Módulo 1)",
       "item": [
         {
           "name": "1.1 Registro de Usuario",
@@ -40,6 +50,7 @@
                 "exec": [
                   "const res = pm.response.json();",
                   "if (res.token) pm.collectionVariables.set('token', res.token);",
+                  "if (res.refreshToken) pm.collectionVariables.set('refreshToken', res.refreshToken);",
                   "if (res.user && res.user.id) pm.collectionVariables.set('userId', res.user.id);"
                 ],
                 "type": "text/javascript"
@@ -64,7 +75,58 @@
           }
         },
         {
-          "name": "1.2 Login por Correo",
+          "name": "1.2 Confirmar Cuenta por Código (JSON)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"token\": \"123456\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/auth/confirm-account",
+              "host": ["{{baseUrl}}"],
+              "path": ["auth", "confirm-account"]
+            }
+          }
+        },
+        {
+          "name": "1.3 Confirmar Cuenta por Enlace (GET HTML)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/auth/confirm-account?token=123456",
+              "host": ["{{baseUrl}}"],
+              "path": ["auth", "confirm-account"],
+              "query": [
+                { "key": "token", "value": "123456" }
+              ]
+            }
+          }
+        },
+        {
+          "name": "1.4 Reenviar Enlace/Código de Confirmación",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"carlos@yolka.app\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/auth/request-confirmation",
+              "host": ["{{baseUrl}}"],
+              "path": ["auth", "request-confirmation"]
+            }
+          }
+        },
+        {
+          "name": "1.5 Login por Correo",
           "event": [
             {
               "listen": "test",
@@ -72,6 +134,7 @@
                 "exec": [
                   "const res = pm.response.json();",
                   "if (res.token) pm.collectionVariables.set('token', res.token);",
+                  "if (res.refreshToken) pm.collectionVariables.set('refreshToken', res.refreshToken);",
                   "if (res.user && res.user.id) pm.collectionVariables.set('userId', res.user.id);"
                 ],
                 "type": "text/javascript"
@@ -96,7 +159,7 @@
           }
         },
         {
-          "name": "1.3 Login / Registro con Google",
+          "name": "1.6 Login / Registro con Google",
           "event": [
             {
               "listen": "test",
@@ -104,6 +167,7 @@
                 "exec": [
                   "const res = pm.response.json();",
                   "if (res.token) pm.collectionVariables.set('token', res.token);",
+                  "if (res.refreshToken) pm.collectionVariables.set('refreshToken', res.refreshToken);",
                   "if (res.user && res.user.id) pm.collectionVariables.set('userId', res.user.id);"
                 ],
                 "type": "text/javascript"
@@ -128,7 +192,7 @@
           }
         },
         {
-          "name": "1.4 Solicitar Recuperación de Contraseña",
+          "name": "1.7 Solicitar Recuperación de Contraseña",
           "request": {
             "method": "POST",
             "header": [
@@ -142,6 +206,74 @@
               "raw": "{{baseUrl}}/auth/recover-password",
               "host": ["{{baseUrl}}"],
               "path": ["auth", "recover-password"]
+            }
+          }
+        },
+        {
+          "name": "1.8 Restablecer Contraseña con Código",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"carlos@yolka.app\",\n  \"code\": \"123456\",\n  \"newPassword\": \"NuevaPassword123!\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/auth/reset-password",
+              "host": ["{{baseUrl}}"],
+              "path": ["auth", "reset-password"]
+            }
+          }
+        },
+        {
+          "name": "1.9 Renovar Token de Sesión (Refresh Token)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const res = pm.response.json();",
+                  "if (res.token) pm.collectionVariables.set('token', res.token);",
+                  "if (res.refreshToken) pm.collectionVariables.set('refreshToken', res.refreshToken);"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"refreshToken\": \"{{refreshToken}}\",\n  \"deviceId\": \"emulator-5554\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/auth/refresh-token",
+              "host": ["{{baseUrl}}"],
+              "path": ["auth", "refresh-token"]
+            }
+          }
+        },
+        {
+          "name": "1.10 Cerrar Sesión (Logout)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "x-token", "value": "{{token}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"deviceId\": \"emulator-5554\",\n  \"refreshToken\": \"{{refreshToken}}\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/auth/logout",
+              "host": ["{{baseUrl}}"],
+              "path": ["auth", "logout"]
             }
           }
         }
@@ -234,11 +366,26 @@
               "path": ["pets", "{{petId}}"]
             }
           }
+        },
+        {
+          "name": "2.5 Eliminar Mascota (Soft Delete)",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              { "key": "x-client-type", "value": "mobile" },
+              { "key": "x-token", "value": "{{token}}" }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/pets/{{petId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["pets", "{{petId}}"]
+            }
+          }
         }
       ]
     },
     {
-      "name": "3. Salud y Rutinas (Módulos 3, 4 y 5)",
+      "name": "3. Salud, Rutinas y Recordatorios (Módulos 3, 4 y 5)",
       "item": [
         {
           "name": "3.1 Registrar Vacuna",
@@ -319,11 +466,63 @@
               "path": ["pets", "{{petId}}", "routines"]
             }
           }
+        },
+        {
+          "name": "3.5 Agregar Recordatorio a Mascota",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const res = pm.response.json();",
+                  "if (res.pet && res.pet.reminders && res.pet.reminders.length > 0) {",
+                  "  pm.collectionVariables.set('reminderId', res.pet.reminders[res.pet.reminders.length - 1].id);",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "x-client-type", "value": "mobile" },
+              { "key": "x-token", "value": "{{token}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"type\": \"GROOMING\",\n  \"title\": \"Baño y corte de uñas\",\n  \"dateTime\": \"2026-10-28T11:00:00Z\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/pets/{{petId}}/reminders",
+              "host": ["{{baseUrl}}"],
+              "path": ["pets", "{{petId}}", "reminders"]
+            }
+          }
+        },
+        {
+          "name": "3.6 Marcar Recordatorio como Completado",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              { "key": "x-client-type", "value": "mobile" },
+              { "key": "x-token", "value": "{{token}}" }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/pets/{{petId}}/reminders/{{reminderId}}?completed=true",
+              "host": ["{{baseUrl}}"],
+              "path": ["pets", "{{petId}}", "reminders", "{{reminderId}}"],
+              "query": [
+                { "key": "completed", "value": "true" }
+              ]
+            }
+          }
         }
       ]
     },
     {
-      "name": "4. Veterinarias, Consejos, Notificaciones y Backups (Módulos 6-10)",
+      "name": "4. Veterinarias, Consejos y Notificaciones (Módulos 6, 7 y 8)",
       "item": [
         {
           "name": "4.1 Listar Veterinarias (Mapa)",
@@ -338,7 +537,7 @@
           }
         },
         {
-          "name": "4.2 Listar Consejos de Cuidado",
+          "name": "4.2 Listar Todos los Consejos de Cuidado",
           "request": {
             "method": "GET",
             "header": [],
@@ -350,7 +549,22 @@
           }
         },
         {
-          "name": "4.3 Consultar Notificaciones Programadas",
+          "name": "4.3 Filtrar Consejos por Especie o Categoría",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/tips?species=DOG",
+              "host": ["{{baseUrl}}"],
+              "path": ["tips"],
+              "query": [
+                { "key": "species", "value": "DOG" }
+              ]
+            }
+          }
+        },
+        {
+          "name": "4.4 Consultar Notificaciones Programadas",
           "request": {
             "method": "GET",
             "header": [
@@ -368,7 +582,127 @@
           }
         },
         {
-          "name": "4.4 Crear Respaldo Cifrado AES-256 (.v2.ylk)",
+          "name": "4.5 Crear Notificación Programada",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "x-client-type", "value": "mobile" },
+              { "key": "x-token", "value": "{{token}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"userId\": \"{{userId}}\",\n  \"petId\": \"{{petId}}\",\n  \"petName\": \"Max\",\n  \"category\": \"WALK\",\n  \"title\": \"Paseo vespertino de Max\",\n  \"body\": \"Hora de salir a caminar 30 minutos\",\n  \"scheduledTime\": \"18:30\",\n  \"timeZone\": \"America/Mexico_City\",\n  \"frequencyUnit\": \"days\",\n  \"frequencyInterval\": 1,\n  \"daysOfWeek\": [\"MON\", \"TUE\", \"WED\", \"THU\", \"FRI\"]\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/notifications",
+              "host": ["{{baseUrl}}"],
+              "path": ["notifications"]
+            }
+          }
+        },
+        {
+          "name": "4.6 Enviar Notificación Push Manual (FCM)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "x-client-type", "value": "mobile" },
+              { "key": "x-token", "value": "{{token}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"userId\": \"{{userId}}\",\n  \"title\": \"Recordatorio de Yolka 🐾\",\n  \"body\": \"Max tiene su cita veterinaria mañana a las 10:30 AM\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/notifications/send",
+              "host": ["{{baseUrl}}"],
+              "path": ["notifications", "send"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "5. Perfil, Preferencias y Respaldos (Módulos 9 y 10)",
+      "item": [
+        {
+          "name": "5.1 Consultar Perfil de Usuario",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "x-client-type", "value": "mobile" },
+              { "key": "x-token", "value": "{{token}}" }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/users/{{userId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["users", "{{userId}}"]
+            }
+          }
+        },
+        {
+          "name": "5.2 Actualizar Perfil y Preferencias (Tema Oscuro/Claro)",
+          "request": {
+            "method": "PUT",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "x-client-type", "value": "mobile" },
+              { "key": "x-token", "value": "{{token}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"fullName\": \"Carlos Mendoza\",\n  \"phone\": \"+52 55 1234 5678\",\n  \"preferences\": {\n    \"darkMode\": true,\n    \"language\": \"es\",\n    \"timeZone\": \"America/Mexico_City\",\n    \"notifications\": {\n      \"vaccines\": true,\n      \"deworming\": true,\n      \"medicalAppointments\": true,\n      \"grooming\": true,\n      \"feeding\": true,\n      \"walks\": true\n    }\n  }\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/users/{{userId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["users", "{{userId}}"]
+            }
+          }
+        },
+        {
+          "name": "5.3 Cambiar Contraseña desde Perfil",
+          "request": {
+            "method": "PUT",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "x-client-type", "value": "mobile" },
+              { "key": "x-token", "value": "{{token}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"currentPassword\": \"Password123!\",\n  \"newPassword\": \"Password123!\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/users/{{userId}}/password",
+              "host": ["{{baseUrl}}"],
+              "path": ["users", "{{userId}}", "password"]
+            }
+          }
+        },
+        {
+          "name": "5.4 Sincronizar Token FCM del Dispositivo",
+          "request": {
+            "method": "PUT",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "x-client-type", "value": "mobile" },
+              { "key": "x-token", "value": "{{token}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"deviceId\": \"emulator-5554\",\n  \"fcmToken\": \"nuevo-fcm-token-98765\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/users/{{userId}}/fcm-token",
+              "host": ["{{baseUrl}}"],
+              "path": ["users", "{{userId}}", "fcm-token"]
+            }
+          }
+        },
+        {
+          "name": "5.5 Crear Respaldo Cifrado AES-256 (.v2.ylk)",
           "request": {
             "method": "POST",
             "header": [
@@ -386,7 +720,7 @@
           }
         },
         {
-          "name": "4.5 Restaurar Respaldo desde la Nube",
+          "name": "5.6 Restaurar Respaldo desde la Nube",
           "request": {
             "method": "GET",
             "header": [
@@ -404,18 +738,13 @@
           }
         },
         {
-          "name": "4.6 Actualizar Preferencias y Tema Oscuro/Claro",
+          "name": "5.7 Eliminar Cuenta de Usuario (Soft Delete en Cascada)",
           "request": {
-            "method": "PUT",
+            "method": "DELETE",
             "header": [
-              { "key": "Content-Type", "value": "application/json" },
               { "key": "x-client-type", "value": "mobile" },
               { "key": "x-token", "value": "{{token}}" }
             ],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"fullName\": \"Carlos Mendoza\",\n  \"phone\": \"+52 55 1234 5678\",\n  \"preferences\": {\n    \"darkMode\": true,\n    \"language\": \"es\",\n    \"timeZone\": \"America/Mexico_City\",\n    \"notifications\": {\n      \"vaccines\": true,\n      \"deworming\": true,\n      \"medicalAppointments\": true,\n      \"grooming\": true,\n      \"feeding\": true,\n      \"walks\": true\n    }\n  }\n}"
-            },
             "url": {
               "raw": "{{baseUrl}}/users/{{userId}}",
               "host": ["{{baseUrl}}"],

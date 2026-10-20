@@ -56,4 +56,22 @@ public class AuthController {
 	public ResponseEntity<Map<String, Object>> requestAccountConfirmation(@Valid @RequestBody RequestConfirmationRequest request) {
 		return ResponseEntity.ok(authService.requestAccountConfirmation(request));
 	}
+
+	@PostMapping("/logout")
+	public ResponseEntity<Map<String, Object>> logout(
+			@RequestHeader(value = "x-token", required = false) String xToken,
+			@RequestHeader(value = "Authorization", required = false) String authHeader,
+			@RequestBody(required = false) LogoutRequest request
+	) {
+		String token = xToken;
+		if ((token == null || token.isBlank()) && authHeader != null && authHeader.startsWith("Bearer ")) {
+			token = authHeader.substring(7).trim();
+		}
+		return ResponseEntity.ok(authService.logout(token, request));
+	}
+
+	@PostMapping("/refresh-token")
+	public ResponseEntity<AuthResponse> refreshToken(@Valid @RequestBody RefreshTokenRequest request) {
+		return ResponseEntity.ok(authService.refreshToken(request));
+	}
 }

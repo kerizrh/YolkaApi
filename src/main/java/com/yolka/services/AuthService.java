@@ -278,6 +278,88 @@ public class AuthService {
 		);
 	}
 
+	public Map<String, Object> logout(String accessToken, LogoutRequest request) {
+		Instant now = Instant.now();
+		String userId = null;
+		String deviceId = (request != null && request.deviceId() != null && !request.deviceId().isBlank())
+				? request.deviceId().trim()
+				: null;
+
+		if (accessToken != null && !accessToken.isBlank()) {
+			try {
+				var claims = jwtHelper.validateToken(accessToken.trim());
+				userId = claims.getSubject();
+				if (deviceId == null) {
+					deviceId = claims.get("deviceId", String.class);
+				}
+			} catch (Exception ignored) {
+			}
+
+			processTokenRepository.findByTokenAndTypeAndDeletedFalse(accessToken.trim(), "accessToken")
+					.ifPresent(tokenDoc -> {
+						tokenDoc.setDeleted(true);
+						tokenDoc.setDeletedAt(now);
+						processTokenRepository.save(tokenDoc);
+					});
+		}
+
+		if (request != null && request.refreshToken() != null && !request.refreshToken().isBlank()) {
+			processTokenRepository.findByTokenAndTypeAndDeletedFalse(request.refreshToken().trim(), "refreshToken")
+					.ifPresent(tokenDoc -> {
+						tokenDoc.setDeleted(true);
+						tokenDoc.setDeletedAt(now);
+						processTokenRepository.save(tokenDoc);
+					});
+		}
+
+		if (userId != null && deviceId != null) {
+			final String targetDeviceId = deviceId;
+			processTokenRepository.findByUserIdAndDeviceIdAndDeletedFalse(userId, targetDeviceId)
+					.forEach(tokenDoc -> {
+						tokenDoc.setDeleted(true);
+						tokenDoc.setDeletedAt(now);
+						processTokenRepository.save(tokenDoc);
+					});
+
+			userRepository.findByIdAndDeletedFalse(userId).ifPresent(user -> {
+				if (user.getActiveDevices() != null) {
+					user.getActiveDevices().removeIf(d -> targetDeviceId.equals(d.getDeviceId()));
+				}
+				user.setUpdatedAt(now);
+				userRepository.save(user);
+			});
+		}
+
+		return Map.of(
+				"success", true,
+				"message", "Sesión cerrada correctamente"
+		);
+	}
+
+	public AuthResponse refreshToken(RefreshTokenRequest request) {
+		String rawRefresh = request.refreshToken().trim();
+		var claims = jwtHelper.validateToken(rawRefresh);
+		ProcessTokenDocument tokenDoc = processTokenRepository.findByTokenAndTypeAndDeletedFalse(rawRefresh, "refreshToken")
+				.orElseThrow(() -> CustomError.unauthorized("Refresh token inválido o revocado", "INVALID_REFRESH_TOKEN"));
+
+		if (tokenDoc.getExpires().isBefore(Instant.now())) {
+			throw CustomError.unauthorized("Refresh token expirado", "EXPIRED_REFRESH_TOKEN");
+		}
+
+		UserDocument user = userRepository.findByIdAndDeletedFalse(claims.getSubject())
+				.orElseThrow(() -> CustomError.notFound("Usuario no encontrado", "USER_NOT_FOUND"));
+
+		tokenDoc.setDeleted(true);
+		tokenDoc.setDeletedAt(Instant.now());
+		processTokenRepository.save(tokenDoc);
+
+		String effectiveDeviceId = (request.deviceId() != null && !request.deviceId().isBlank())
+				? request.deviceId().trim()
+				: tokenDoc.getDeviceId();
+
+		return issueTokensAndBuildResponse(user, effectiveDeviceId, "Token renovado exitosamente");
+	}
+
 	private void updateUserDevice(UserDocument user, String deviceId, String deviceToken) {
 		String effectiveDeviceId = (deviceId != null && !deviceId.isBlank()) ? deviceId.trim() : "default-mobile";
 		String effectiveToken = (deviceToken != null) ? deviceToken.trim() : "";
