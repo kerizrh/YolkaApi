@@ -17,7 +17,7 @@ import java.time.Instant;
 import java.util.Map;
 
 @RestController
-@RequestMapping("/api/v1/users")
+@RequestMapping({"/api/v1/users", "/api/users"})
 @RequiredArgsConstructor
 public class UsersController {
 
