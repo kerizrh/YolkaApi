@@ -8,6 +8,7 @@ import java.util.List;
 
 @Repository
 public interface TipRepository extends MongoRepository<TipDocument, String> {
-	List<TipDocument> findByCategoryIgnoreCase(String category);
-	List<TipDocument> findBySpeciesIgnoreCaseIn(List<String> species);
+	List<TipDocument> findByDeletedFalse();
+	List<TipDocument> findByCategoryIgnoreCaseAndDeletedFalse(String category);
+	List<TipDocument> findBySpeciesIgnoreCaseInAndDeletedFalse(List<String> species);
 }

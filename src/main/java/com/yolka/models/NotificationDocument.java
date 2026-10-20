@@ -1,10 +1,13 @@
 package com.yolka.models;
 
+import com.yolka.helpers.UuidGeneratorHelper;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 import org.springframework.data.annotation.Id;
+import org.springframework.data.mongodb.core.index.CompoundIndex;
+import org.springframework.data.mongodb.core.index.CompoundIndexes;
 import org.springframework.data.mongodb.core.index.Indexed;
 import org.springframework.data.mongodb.core.mapping.Document;
 
@@ -17,15 +20,26 @@ import java.util.List;
 @NoArgsConstructor
 @AllArgsConstructor
 @Document(collection = "notifications")
+@CompoundIndexes({
+		@CompoundIndex(name = "idx_notif_user_deleted_next", def = "{'userId': 1, 'deleted': 1, 'nextNotificationDate': 1}"),
+		@CompoundIndex(name = "idx_notif_due_cron", def = "{'active': 1, 'deleted': 1, 'nextNotificationDate': 1}")
+})
 public class NotificationDocument {
 
 	@Id
-	private String id;
+	@Builder.Default
+	private String id = UuidGeneratorHelper.newUuid();
+
+	@Indexed(unique = true)
+	@Builder.Default
+	private String uuid = UuidGeneratorHelper.newUuid();
 
 	@Indexed
 	private String userId;
 
+	@Indexed
 	private String petId;
+
 	private String petName;
 	private String category; // VACCINE | DEWORMING | APPOINTMENT | GROOMING | FEEDING | WALK
 	private String title;
@@ -42,8 +56,11 @@ public class NotificationDocument {
 	@Builder.Default
 	private boolean active = true;
 
+	@Indexed
 	@Builder.Default
 	private boolean deleted = false;
+
+	private Instant deletedAt;
 
 	@Builder.Default
 	private Instant createdAt = Instant.now();

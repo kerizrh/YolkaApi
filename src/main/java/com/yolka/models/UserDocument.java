@@ -1,10 +1,13 @@
 package com.yolka.models;
 
+import com.yolka.helpers.UuidGeneratorHelper;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 import org.springframework.data.annotation.Id;
+import org.springframework.data.mongodb.core.index.CompoundIndex;
+import org.springframework.data.mongodb.core.index.CompoundIndexes;
 import org.springframework.data.mongodb.core.index.Indexed;
 import org.springframework.data.mongodb.core.mapping.Document;
 
@@ -17,16 +20,25 @@ import java.util.List;
 @NoArgsConstructor
 @AllArgsConstructor
 @Document(collection = "users")
+@CompoundIndexes({
+		@CompoundIndex(name = "idx_users_email_deleted", def = "{'email': 1, 'deleted': 1}"),
+		@CompoundIndex(name = "idx_users_google_deleted", def = "{'googleId': 1, 'deleted': 1}")
+})
 public class UserDocument {
 
 	@Id
-	private String id;
+	@Builder.Default
+	private String id = UuidGeneratorHelper.newUuid();
+
+	@Indexed(unique = true)
+	@Builder.Default
+	private String uuid = UuidGeneratorHelper.newUuid();
 
 	private String fullName;
 	private String firstName;
 	private String lastName;
 
-	@Indexed(unique = true)
+	@Indexed
 	private String email;
 
 	private String password;
@@ -34,7 +46,9 @@ public class UserDocument {
 	@Builder.Default
 	private String authProvider = "LOCAL"; // LOCAL | GOOGLE
 
+	@Indexed(sparse = true)
 	private String googleId;
+
 	private String phone;
 	private String photoUrl;
 	private String fcmToken;
@@ -52,6 +66,12 @@ public class UserDocument {
 	private boolean hasDeviceBackup = false;
 
 	private Instant lastDeviceBackupAt;
+
+	@Indexed
+	@Builder.Default
+	private boolean deleted = false;
+
+	private Instant deletedAt;
 
 	@Builder.Default
 	private Instant createdAt = Instant.now();

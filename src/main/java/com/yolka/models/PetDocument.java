@@ -1,10 +1,13 @@
 package com.yolka.models;
 
+import com.yolka.helpers.UuidGeneratorHelper;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 import org.springframework.data.annotation.Id;
+import org.springframework.data.mongodb.core.index.CompoundIndex;
+import org.springframework.data.mongodb.core.index.CompoundIndexes;
 import org.springframework.data.mongodb.core.index.Indexed;
 import org.springframework.data.mongodb.core.mapping.Document;
 
@@ -17,10 +20,19 @@ import java.util.List;
 @NoArgsConstructor
 @AllArgsConstructor
 @Document(collection = "pets")
+@CompoundIndexes({
+		@CompoundIndex(name = "idx_pets_user_deleted_created", def = "{'userId': 1, 'deleted': 1, 'createdAt': -1}"),
+		@CompoundIndex(name = "idx_pets_user_species_deleted", def = "{'userId': 1, 'species': 1, 'deleted': 1}")
+})
 public class PetDocument {
 
 	@Id
-	private String id;
+	@Builder.Default
+	private String id = UuidGeneratorHelper.newUuid();
+
+	@Indexed(unique = true)
+	@Builder.Default
+	private String uuid = UuidGeneratorHelper.newUuid();
 
 	@Indexed
 	private String userId;
@@ -51,6 +63,12 @@ public class PetDocument {
 	@Builder.Default
 	private List<ReminderRecord> reminders = new ArrayList<>();
 
+	@Indexed
+	@Builder.Default
+	private boolean deleted = false;
+
+	private Instant deletedAt;
+
 	@Builder.Default
 	private Instant createdAt = Instant.now();
 
@@ -62,11 +80,14 @@ public class PetDocument {
 	@NoArgsConstructor
 	@AllArgsConstructor
 	public static class VaccineRecord {
-		private String id;
+		@Builder.Default
+		private String id = UuidGeneratorHelper.newUuid();
 		private String vaccineName;
 		private String applicationDate;
 		private String nextDueDate;
 		private String notes;
+		@Builder.Default
+		private boolean deleted = false;
 	}
 
 	@Data
@@ -74,12 +95,15 @@ public class PetDocument {
 	@NoArgsConstructor
 	@AllArgsConstructor
 	public static class DewormingRecord {
-		private String id;
+		@Builder.Default
+		private String id = UuidGeneratorHelper.newUuid();
 		private String type; // INTERNAL | EXTERNAL
 		private String productName;
 		private String applicationDate;
 		private String nextDueDate;
 		private String notes;
+		@Builder.Default
+		private boolean deleted = false;
 	}
 
 	@Data
@@ -87,13 +111,16 @@ public class PetDocument {
 	@NoArgsConstructor
 	@AllArgsConstructor
 	public static class AppointmentRecord {
-		private String id;
+		@Builder.Default
+		private String id = UuidGeneratorHelper.newUuid();
 		private String clinicName;
 		private String veterinarianName;
 		private String reason;
 		private String dateTime; // ISO-8601
 		private String notes;
 		private boolean completed;
+		@Builder.Default
+		private boolean deleted = false;
 	}
 
 	@Data
@@ -101,7 +128,8 @@ public class PetDocument {
 	@NoArgsConstructor
 	@AllArgsConstructor
 	public static class RoutineRecord {
-		private String id;
+		@Builder.Default
+		private String id = UuidGeneratorHelper.newUuid();
 		private String category; // FEEDING | WALK | GROOMING_BATH | GROOMING_NAILS
 		private String title;
 		private String time; // HH:mm
@@ -110,6 +138,8 @@ public class PetDocument {
 		@Builder.Default
 		private boolean enabled = true;
 		private String notes;
+		@Builder.Default
+		private boolean deleted = false;
 	}
 
 	@Data
@@ -117,10 +147,13 @@ public class PetDocument {
 	@NoArgsConstructor
 	@AllArgsConstructor
 	public static class ReminderRecord {
-		private String id;
+		@Builder.Default
+		private String id = UuidGeneratorHelper.newUuid();
 		private String type; // VACCINE | DEWORMING | APPOINTMENT | FEEDING | WALK | GROOMING
 		private String title;
 		private String dateTime; // ISO-8601
 		private boolean completed;
+		@Builder.Default
+		private boolean deleted = false;
 	}
 }

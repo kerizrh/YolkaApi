@@ -25,6 +25,7 @@ public class AuthService {
 	private final HashPasswordsHelper hashPasswordsHelper;
 	private final JwtHelper jwtHelper;
 	private final GoogleVerifyHelper googleVerifyHelper;
+	private final UuidGeneratorHelper uuidGeneratorHelper;
 	private final MailService mailService;
 	private final EmailTemplates emailTemplates;
 	private final SecureRandom secureRandom = new SecureRandom();
@@ -36,15 +37,18 @@ public class AuthService {
 		}
 
 		String normalizedEmail = request.email().trim().toLowerCase();
-		if (userRepository.existsByEmailIgnoreCase(normalizedEmail)) {
+		if (userRepository.existsByEmailIgnoreCaseAndDeletedFalse(normalizedEmail)) {
 			throw CustomError.badRequest("Ya existe un usuario con el correo " + normalizedEmail, "USER_ALREADY_EXISTS");
 		}
 
 		String[] nameParts = request.fullName().trim().split("\\s+", 2);
 		String firstName = nameParts[0];
 		String lastName = nameParts.length > 1 ? nameParts[1] : "";
+		String uid = uuidGeneratorHelper.generate();
 
 		UserDocument newUser = UserDocument.builder()
+				.id(uid)
+				.uuid(uid)
 				.fullName(request.fullName().trim())
 				.firstName(firstName)
 				.lastName(lastName)
@@ -52,6 +56,7 @@ public class AuthService {
 				.password(hashPasswordsHelper.hash(request.password()))
 				.phone(request.phone() != null ? request.phone().trim() : "")
 				.authProvider("LOCAL")
+				.deleted(false)
 				.createdAt(Instant.now())
 				.updatedAt(Instant.now())
 				.build();
@@ -70,7 +75,7 @@ public class AuthService {
 
 	public AuthResponse login(LoginRequest request) {
 		String normalizedEmail = request.email().trim().toLowerCase();
-		UserDocument user = userRepository.findByEmailIgnoreCase(normalizedEmail)
+		UserDocument user = userRepository.findByEmailIgnoreCaseAndDeletedFalse(normalizedEmail)
 				.orElseThrow(() -> CustomError.unauthorized("Credenciales inválidas", "INVALID_CREDENTIALS"));
 
 		if (user.getPassword() == null || !hashPasswordsHelper.compare(request.password(), user.getPassword())) {
@@ -95,7 +100,7 @@ public class AuthService {
 		}
 
 		String normalizedEmail = googleUser.email().trim().toLowerCase();
-		UserDocument user = userRepository.findByEmailIgnoreCase(normalizedEmail).orElse(null);
+		UserDocument user = userRepository.findByEmailIgnoreCaseAndDeletedFalse(normalizedEmail).orElse(null);
 
 		if (user == null) {
 			String fullName = (googleUser.name() != null && !googleUser.name().isBlank())
@@ -104,8 +109,11 @@ public class AuthService {
 			if (fullName.isBlank()) {
 				fullName = normalizedEmail.split("@")[0];
 			}
+			String uid = uuidGeneratorHelper.generate();
 
 			user = UserDocument.builder()
+					.id(uid)
+					.uuid(uid)
 					.fullName(fullName)
 					.firstName(googleUser.givenName() != null ? googleUser.givenName() : fullName)
 					.lastName(googleUser.familyName() != null ? googleUser.familyName() : "")
@@ -113,6 +121,7 @@ public class AuthService {
 					.authProvider("GOOGLE")
 					.googleId(googleUser.sub())
 					.photoUrl(googleUser.picture())
+					.deleted(false)
 					.createdAt(Instant.now())
 					.updatedAt(Instant.now())
 					.build();
@@ -132,16 +141,18 @@ public class AuthService {
 
 	public Map<String, Object> recoverPassword(RecoverPasswordRequest request) {
 		String normalizedEmail = request.email().trim().toLowerCase();
-		UserDocument user = userRepository.findByEmailIgnoreCase(normalizedEmail)
+		UserDocument user = userRepository.findByEmailIgnoreCaseAndDeletedFalse(normalizedEmail)
 				.orElseThrow(() -> CustomError.notFound("No existe una cuenta registrada con ese correo", "USER_NOT_FOUND"));
 
 		String resetCode = String.format("%06d", secureRandom.nextInt(1_000_000));
 		ProcessTokenDocument resetTokenDoc = ProcessTokenDocument.builder()
+				.id(uuidGeneratorHelper.generate())
 				.token(resetCode)
 				.type("passwordReset")
 				.userId(user.getId())
 				.deviceId("recovery")
 				.expires(Instant.now().plusSeconds(15 * 60))
+				.deleted(false)
 				.build();
 		processTokenRepository.save(resetTokenDoc);
 
@@ -159,10 +170,10 @@ public class AuthService {
 
 	public Map<String, Object> resetPassword(ResetPasswordRequest request) {
 		String normalizedEmail = request.email().trim().toLowerCase();
-		UserDocument user = userRepository.findByEmailIgnoreCase(normalizedEmail)
+		UserDocument user = userRepository.findByEmailIgnoreCaseAndDeletedFalse(normalizedEmail)
 				.orElseThrow(() -> CustomError.notFound("Usuario no encontrado", "USER_NOT_FOUND"));
 
-		ProcessTokenDocument tokenDoc = processTokenRepository.findByTokenAndType(request.code().trim(), "passwordReset")
+		ProcessTokenDocument tokenDoc = processTokenRepository.findByTokenAndTypeAndDeletedFalse(request.code().trim(), "passwordReset")
 				.orElseThrow(() -> CustomError.badRequest("Código de recuperación inválido", "INVALID_RESET_CODE"));
 
 		if (!user.getId().equals(tokenDoc.getUserId()) || tokenDoc.getExpires().isBefore(Instant.now())) {
@@ -172,7 +183,10 @@ public class AuthService {
 		user.setPassword(hashPasswordsHelper.hash(request.newPassword()));
 		user.setUpdatedAt(Instant.now());
 		userRepository.save(user);
-		processTokenRepository.delete(tokenDoc);
+
+		tokenDoc.setDeleted(true);
+		tokenDoc.setDeletedAt(Instant.now());
+		processTokenRepository.save(tokenDoc);
 
 		return Map.of(
 				"success", true,
@@ -208,19 +222,23 @@ public class AuthService {
 		String refreshToken = jwtHelper.generateRefreshToken(user.getId(), user.getEmail(), effectiveDeviceId);
 
 		processTokenRepository.save(ProcessTokenDocument.builder()
+				.id(uuidGeneratorHelper.generate())
 				.token(accessToken)
 				.type("accessToken")
 				.userId(user.getId())
 				.deviceId(effectiveDeviceId)
 				.expires(Instant.now().plusSeconds(24 * 60 * 60))
+				.deleted(false)
 				.build());
 
 		processTokenRepository.save(ProcessTokenDocument.builder()
+				.id(uuidGeneratorHelper.generate())
 				.token(refreshToken)
 				.type("refreshToken")
 				.userId(user.getId())
 				.deviceId(effectiveDeviceId)
 				.expires(Instant.now().plusSeconds(180L * 24 * 60 * 60))
+				.deleted(false)
 				.build());
 
 		return new AuthResponse(

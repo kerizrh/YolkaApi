@@ -5,9 +5,10 @@ import org.springframework.data.mongodb.repository.MongoRepository;
 import org.springframework.stereotype.Repository;
 
 import java.util.List;
+import java.util.Optional;
 
 @Repository
 public interface PetRepository extends MongoRepository<PetDocument, String> {
-	List<PetDocument> findByUserIdOrderByCreatedAtDesc(String userId);
-	void deleteByUserId(String userId);
+	Optional<PetDocument> findByIdAndDeletedFalse(String id);
+	List<PetDocument> findByUserIdAndDeletedFalseOrderByCreatedAtDesc(String userId);
 }

@@ -20,7 +20,7 @@ public class VetsController {
 
 	@GetMapping
 	public ResponseEntity<Map<String, Object>> getVetClinics() {
-		List<VetClinicDocument> clinics = vetClinicRepository.findAll();
+		List<VetClinicDocument> clinics = vetClinicRepository.findByDeletedFalse();
 		return ResponseEntity.ok(Map.of("success", true, "vets", clinics));
 	}
 }

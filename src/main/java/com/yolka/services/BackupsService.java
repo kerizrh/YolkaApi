@@ -4,6 +4,7 @@ import com.yolka.config.EnvsConfig;
 import com.yolka.helpers.CryptoHelper;
 import com.yolka.helpers.CryptoHelper.EncryptedPayload;
 import com.yolka.helpers.CustomError;
+import com.yolka.helpers.UuidGeneratorHelper;
 import com.yolka.models.BackupDocument;
 import com.yolka.models.NotificationDocument;
 import com.yolka.models.PetDocument;
@@ -40,14 +41,15 @@ public class BackupsService {
 	private final NotificationRepository notificationRepository;
 	private final BackupRepository backupRepository;
 	private final CryptoHelper cryptoHelper;
+	private final UuidGeneratorHelper uuidGeneratorHelper;
 	private final EnvsConfig envsConfig;
 	private final ObjectMapper objectMapper = new ObjectMapper();
 
 	public Map<String, Object> createCloudBackup(String userId) {
-		UserDocument user = userRepository.findById(userId)
+		UserDocument user = userRepository.findByIdAndDeletedFalse(userId)
 				.orElseThrow(() -> CustomError.notFound("Usuario no encontrado", "USER_NOT_FOUND"));
 
-		List<PetDocument> pets = petRepository.findByUserIdOrderByCreatedAtDesc(userId);
+		List<PetDocument> pets = petRepository.findByUserIdAndDeletedFalseOrderByCreatedAtDesc(userId);
 		List<NotificationDocument> notifications = notificationRepository.findByUserIdAndDeletedFalseOrderByNextNotificationDateAsc(userId);
 
 		Map<String, Object> backupPayload = new LinkedHashMap<>();
@@ -71,7 +73,7 @@ public class BackupsService {
 			Path filePath = dir.resolve(fileName);
 			Files.writeString(filePath, fileContent, StandardCharsets.UTF_8);
 
-			backupRepository.findFirstByUserIdOrderByCreatedAtDesc(userId).ifPresent(prev -> {
+			backupRepository.findFirstByUserIdAndDeletedFalseOrderByCreatedAtDesc(userId).ifPresent(prev -> {
 				try {
 					Files.deleteIfExists(dir.resolve(prev.getFileName()));
 				} catch (Exception ignored) {
@@ -79,8 +81,15 @@ public class BackupsService {
 			});
 
 			Instant now = Instant.now();
-			BackupDocument backupDoc = backupRepository.findFirstByUserIdOrderByCreatedAtDesc(userId)
-					.orElse(BackupDocument.builder().userId(userId).createdAt(now).build());
+			String newBackupId = uuidGeneratorHelper.generate();
+			BackupDocument backupDoc = backupRepository.findFirstByUserIdAndDeletedFalseOrderByCreatedAtDesc(userId)
+					.orElse(BackupDocument.builder()
+							.id(newBackupId)
+							.uuid(newBackupId)
+							.userId(userId)
+							.deleted(false)
+							.createdAt(now)
+							.build());
 			backupDoc.setFileName(fileName);
 			backupDoc.setFileSize(Files.size(filePath));
 			backupDoc.setType("cloud_encrypted_v2");
@@ -103,10 +112,10 @@ public class BackupsService {
 	}
 
 	public Map<String, Object> restoreCloudBackup(String userId) {
-		UserDocument user = userRepository.findById(userId)
+		UserDocument user = userRepository.findByIdAndDeletedFalse(userId)
 				.orElseThrow(() -> CustomError.notFound("Usuario no encontrado", "USER_NOT_FOUND"));
 
-		BackupDocument backupDoc = backupRepository.findFirstByUserIdOrderByCreatedAtDesc(userId)
+		BackupDocument backupDoc = backupRepository.findFirstByUserIdAndDeletedFalseOrderByCreatedAtDesc(userId)
 				.orElseThrow(() -> CustomError.notFound("No existe un respaldo previo para este usuario", "NO_BACKUP_FOUND"));
 
 		try {
@@ -126,7 +135,16 @@ public class BackupsService {
 			);
 
 			if (!restoredPets.isEmpty()) {
-				petRepository.deleteByUserId(userId);
+				Instant now = Instant.now();
+				petRepository.findByUserIdAndDeletedFalseOrderByCreatedAtDesc(userId).forEach(existing -> {
+					existing.setDeleted(true);
+					existing.setDeletedAt(now);
+					petRepository.save(existing);
+				});
+				restoredPets.forEach(p -> {
+					p.setDeleted(false);
+					p.setDeletedAt(null);
+				});
 				petRepository.saveAll(restoredPets);
 			}
 

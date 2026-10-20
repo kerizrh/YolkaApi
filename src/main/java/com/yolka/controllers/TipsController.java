@@ -23,11 +23,11 @@ public class TipsController {
 	) {
 		List<TipDocument> tips;
 		if (category != null && !category.isBlank()) {
-			tips = tipRepository.findByCategoryIgnoreCase(category.trim());
+			tips = tipRepository.findByCategoryIgnoreCaseAndDeletedFalse(category.trim());
 		} else if (species != null && !species.isBlank()) {
-			tips = tipRepository.findBySpeciesIgnoreCaseIn(List.of(species.trim().toUpperCase(), "ALL"));
+			tips = tipRepository.findBySpeciesIgnoreCaseInAndDeletedFalse(List.of(species.trim().toUpperCase(), "ALL"));
 		} else {
-			tips = tipRepository.findAll();
+			tips = tipRepository.findByDeletedFalse();
 		}
 		return ResponseEntity.ok(Map.of("success", true, "tips", tips));
 	}

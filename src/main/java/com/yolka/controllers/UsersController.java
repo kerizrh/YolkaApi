@@ -31,7 +31,7 @@ public class UsersController {
 
 	@GetMapping("/{id}")
 	public ResponseEntity<Map<String, Object>> getUserProfile(@PathVariable String id) {
-		UserDocument user = userRepository.findById(id)
+		UserDocument user = userRepository.findByIdAndDeletedFalse(id)
 				.orElseThrow(() -> CustomError.notFound("Usuario no encontrado", "USER_NOT_FOUND"));
 		return ResponseEntity.ok(Map.of("success", true, "user", UserResponse.fromDocument(user)));
 	}
@@ -41,7 +41,7 @@ public class UsersController {
 			@PathVariable String id,
 			@RequestBody UpdateProfileRequest request
 	) {
-		UserDocument user = userRepository.findById(id)
+		UserDocument user = userRepository.findByIdAndDeletedFalse(id)
 				.orElseThrow(() -> CustomError.notFound("Usuario no encontrado", "USER_NOT_FOUND"));
 
 		if (request.fullName() != null && !request.fullName().isBlank()) {
@@ -65,7 +65,7 @@ public class UsersController {
 			@PathVariable String id,
 			@Valid @RequestBody ChangePasswordRequest request
 	) {
-		UserDocument user = userRepository.findById(id)
+		UserDocument user = userRepository.findByIdAndDeletedFalse(id)
 				.orElseThrow(() -> CustomError.notFound("Usuario no encontrado", "USER_NOT_FOUND"));
 
 		if (user.getPassword() != null && !user.getPassword().isBlank()
@@ -85,7 +85,7 @@ public class UsersController {
 			@PathVariable String id,
 			@Valid @RequestBody FcmTokenRequest request
 	) {
-		UserDocument user = userRepository.findById(id)
+		UserDocument user = userRepository.findByIdAndDeletedFalse(id)
 				.orElseThrow(() -> CustomError.notFound("Usuario no encontrado", "USER_NOT_FOUND"));
 
 		String deviceId = (request.deviceId() != null && !request.deviceId().isBlank())
@@ -110,15 +110,44 @@ public class UsersController {
 
 	@DeleteMapping("/{id}")
 	public ResponseEntity<Map<String, Object>> deleteAccount(@PathVariable String id) {
-		UserDocument user = userRepository.findById(id)
+		UserDocument user = userRepository.findByIdAndDeletedFalse(id)
 				.orElseThrow(() -> CustomError.notFound("Usuario no encontrado", "USER_NOT_FOUND"));
 
-		petRepository.deleteByUserId(id);
-		notificationRepository.deleteByUserId(id);
-		backupRepository.deleteByUserId(id);
-		processTokenRepository.deleteByUserId(id);
-		userRepository.delete(user);
+		Instant now = Instant.now();
 
-		return ResponseEntity.ok(Map.of("success", true, "message", "Cuenta y datos asociados eliminados correctamente"));
+		petRepository.findByUserIdAndDeletedFalseOrderByCreatedAtDesc(id).forEach(pet -> {
+			pet.setDeleted(true);
+			pet.setDeletedAt(now);
+			pet.setUpdatedAt(now);
+			petRepository.save(pet);
+		});
+
+		notificationRepository.findByUserIdAndDeletedFalseOrderByNextNotificationDateAsc(id).forEach(notif -> {
+			notif.setActive(false);
+			notif.setDeleted(true);
+			notif.setDeletedAt(now);
+			notificationRepository.save(notif);
+		});
+
+		backupRepository.findByUserIdAndDeletedFalse(id).forEach(backup -> {
+			backup.setDeleted(true);
+			backup.setDeletedAt(now);
+			backup.setUpdatedAt(now);
+			backupRepository.save(backup);
+		});
+
+		processTokenRepository.findByUserIdAndDeletedFalse(id).forEach(token -> {
+			token.setDeleted(true);
+			token.setDeletedAt(now);
+			processTokenRepository.save(token);
+		});
+
+		user.setDeleted(true);
+		user.setDeletedAt(now);
+		user.setUpdatedAt(now);
+		user.getActiveDevices().clear();
+		userRepository.save(user);
+
+		return ResponseEntity.ok(Map.of("success", true, "message", "Cuenta y datos asociados dados de baja (Soft Delete) correctamente"));
 	}
 }

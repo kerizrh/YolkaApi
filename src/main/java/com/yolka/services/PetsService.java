@@ -3,29 +3,33 @@ package com.yolka.services;
 import com.yolka.dto.PetDtos.*;
 import com.yolka.dto.UserDtos.CreateNotificationRequest;
 import com.yolka.helpers.CustomError;
+import com.yolka.helpers.UuidGeneratorHelper;
+import com.yolka.models.NotificationDocument;
 import com.yolka.models.PetDocument;
 import com.yolka.models.PetDocument.*;
+import com.yolka.repositories.NotificationRepository;
 import com.yolka.repositories.PetRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
 import java.time.Instant;
 import java.util.List;
-import java.util.UUID;
 
 @Service
 @RequiredArgsConstructor
 public class PetsService {
 
 	private final PetRepository petRepository;
+	private final NotificationRepository notificationRepository;
 	private final NotificationsService notificationsService;
+	private final UuidGeneratorHelper uuidGeneratorHelper;
 
 	public List<PetDocument> getPetsByUser(String userId) {
-		return petRepository.findByUserIdOrderByCreatedAtDesc(userId);
+		return petRepository.findByUserIdAndDeletedFalseOrderByCreatedAtDesc(userId);
 	}
 
 	public PetDocument getPetById(String id) {
-		return petRepository.findById(id)
+		return petRepository.findByIdAndDeletedFalse(id)
 				.orElseThrow(() -> CustomError.notFound("Mascota no encontrada", "PET_NOT_FOUND"));
 	}
 
@@ -38,8 +42,11 @@ public class PetsService {
 		String ownerId = (request.userId() != null && !request.userId().isBlank())
 				? request.userId()
 				: authenticatedUserId;
+		String petUuid = uuidGeneratorHelper.generate();
 
 		PetDocument pet = PetDocument.builder()
+				.id(petUuid)
+				.uuid(petUuid)
 				.userId(ownerId)
 				.name(request.name().trim())
 				.species(species)
@@ -51,6 +58,7 @@ public class PetsService {
 				.weight(request.weight() != null ? request.weight() : 0.0)
 				.size(request.size() != null ? request.size().trim().toUpperCase() : "MEDIUM")
 				.photoUrl(request.photoUrl() != null ? request.photoUrl().trim() : "")
+				.deleted(false)
 				.createdAt(Instant.now())
 				.updatedAt(Instant.now())
 				.build();
@@ -83,17 +91,35 @@ public class PetsService {
 
 	public void deletePet(String id) {
 		PetDocument pet = getPetById(id);
-		petRepository.delete(pet);
+		Instant now = Instant.now();
+		pet.setDeleted(true);
+		pet.setDeletedAt(now);
+		pet.setUpdatedAt(now);
+		petRepository.save(pet);
+
+		if (pet.getUserId() != null) {
+			List<NotificationDocument> notifs = notificationRepository
+					.findByUserIdAndDeletedFalseOrderByNextNotificationDateAsc(pet.getUserId());
+			notifs.stream()
+					.filter(n -> id.equals(n.getPetId()))
+					.forEach(n -> {
+						n.setActive(false);
+						n.setDeleted(true);
+						n.setDeletedAt(now);
+						notificationRepository.save(n);
+					});
+		}
 	}
 
 	public PetDocument addVaccine(String petId, VaccineRequest request) {
 		PetDocument pet = getPetById(petId);
 		VaccineRecord record = VaccineRecord.builder()
-				.id(UUID.randomUUID().toString())
+				.id(uuidGeneratorHelper.generate())
 				.vaccineName(request.vaccineName().trim())
 				.applicationDate(request.applicationDate().trim())
 				.nextDueDate(request.nextDueDate() != null ? request.nextDueDate().trim() : "")
 				.notes(request.notes() != null ? request.notes().trim() : "")
+				.deleted(false)
 				.build();
 		pet.getVaccines().add(record);
 		pet.setUpdatedAt(Instant.now());
@@ -120,12 +146,13 @@ public class PetsService {
 	public PetDocument addDeworming(String petId, DewormingRequest request) {
 		PetDocument pet = getPetById(petId);
 		DewormingRecord record = DewormingRecord.builder()
-				.id(UUID.randomUUID().toString())
+				.id(uuidGeneratorHelper.generate())
 				.type(request.type().trim().toUpperCase())
 				.productName(request.productName().trim())
 				.applicationDate(request.applicationDate().trim())
 				.nextDueDate(request.nextDueDate() != null ? request.nextDueDate().trim() : "")
 				.notes(request.notes() != null ? request.notes().trim() : "")
+				.deleted(false)
 				.build();
 		pet.getDewormings().add(record);
 		pet.setUpdatedAt(Instant.now());
@@ -152,13 +179,14 @@ public class PetsService {
 	public PetDocument addAppointment(String petId, AppointmentRequest request) {
 		PetDocument pet = getPetById(petId);
 		AppointmentRecord record = AppointmentRecord.builder()
-				.id(UUID.randomUUID().toString())
+				.id(uuidGeneratorHelper.generate())
 				.clinicName(request.clinicName().trim())
 				.veterinarianName(request.veterinarianName() != null ? request.veterinarianName().trim() : "")
 				.reason(request.reason().trim())
 				.dateTime(request.dateTime().trim())
 				.notes(request.notes() != null ? request.notes().trim() : "")
 				.completed(Boolean.TRUE.equals(request.completed()))
+				.deleted(false)
 				.build();
 		pet.getAppointments().add(record);
 		pet.setUpdatedAt(Instant.now());
@@ -183,13 +211,14 @@ public class PetsService {
 	public PetDocument addRoutine(String petId, RoutineRequest request) {
 		PetDocument pet = getPetById(petId);
 		RoutineRecord record = RoutineRecord.builder()
-				.id(UUID.randomUUID().toString())
+				.id(uuidGeneratorHelper.generate())
 				.category(request.category().trim().toUpperCase())
 				.title(request.title().trim())
 				.time(request.time().trim())
 				.daysOfWeek(request.daysOfWeek() != null ? request.daysOfWeek() : List.of("MON", "TUE", "WED", "THU", "FRI", "SAT", "SUN"))
 				.enabled(request.enabled() == null || request.enabled())
 				.notes(request.notes() != null ? request.notes().trim() : "")
+				.deleted(false)
 				.build();
 		pet.getRoutines().add(record);
 		pet.setUpdatedAt(Instant.now());
@@ -216,11 +245,12 @@ public class PetsService {
 	public PetDocument addReminder(String petId, ReminderRequest request) {
 		PetDocument pet = getPetById(petId);
 		ReminderRecord record = ReminderRecord.builder()
-				.id(UUID.randomUUID().toString())
+				.id(uuidGeneratorHelper.generate())
 				.type(request.type().trim().toUpperCase())
 				.title(request.title().trim())
 				.dateTime(request.dateTime().trim())
 				.completed(Boolean.TRUE.equals(request.completed()))
+				.deleted(false)
 				.build();
 		pet.getReminders().add(record);
 		pet.setUpdatedAt(Instant.now());
@@ -230,7 +260,7 @@ public class PetsService {
 	public PetDocument toggleReminder(String petId, String reminderId, boolean completed) {
 		PetDocument pet = getPetById(petId);
 		pet.getReminders().stream()
-				.filter(r -> reminderId.equals(r.getId()))
+				.filter(r -> !r.isDeleted() && reminderId.equals(r.getId()))
 				.findFirst()
 				.ifPresent(r -> r.setCompleted(completed));
 		pet.setUpdatedAt(Instant.now());
