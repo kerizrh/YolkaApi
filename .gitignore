@@ -1,6 +1,7 @@
 # Secretos, credenciales y variables de entorno (NUNCA SUBIR)
 *.env
 .env.*
+!.env.template
 atlas-credentials.env
 *firebase-adminsdk*.json
 firebase-service-account.json
@@ -11,6 +12,9 @@ client_secret*.json
 *credentials*.json
 application-local.yml
 application-secret.yml
+uploads/
+*.ylk
+*.kfo
 *.pem
 *.key
 *.p12
