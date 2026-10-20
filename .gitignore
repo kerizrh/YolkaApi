@@ -1,4 +1,5 @@
 # Secretos, credenciales y variables de entorno (NUNCA SUBIR)
+/config/
 *.env
 .env.*
 !.env.template

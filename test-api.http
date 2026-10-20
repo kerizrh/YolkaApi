@@ -1,0 +1,55 @@
+### 1. Obtener veterinarias cercanas (Módulo 6 - Geolocalización)
+GET http://localhost:8080/api/v1/vets
+Accept: application/json
+
+### 2. Obtener consejos de cuidado (Módulo 7 - Consejos)
+GET http://localhost:8080/api/v1/tips
+Accept: application/json
+
+### 3. Registrar un nuevo usuario (Módulo 1 - Autenticación)
+POST http://localhost:8080/api/v1/auth/register
+Content-Type: application/json
+x-client-type: mobile
+
+{
+  "fullName": "Test Demo",
+  "email": "Tests@yolka.app",
+  "password": "Password123!",
+  "confirmPassword": "Password123!",
+  "phone": "+52 55 1234 5678",
+  "deviceId": "emulator-5554",
+  "deviceToken": "fcm-demo-token"
+}
+
+### 4. Iniciar sesión por correo (Módulo 1 - Login)
+POST http://localhost:8080/api/v1/auth/login
+Content-Type: application/json
+x-client-type: mobile
+
+{
+  "email": "Test@yolka.app",
+  "password": "Password123!",
+  "deviceId": "emulator-5554",
+  "deviceToken": "fcm-demo-token"
+}
+
+### 5. Registrar una mascota (Módulo 2 - Mascotas)
+# Reemplaza {{token}} y {{userId}} con los valores devueltos por /login
+POST http://localhost:8080/api/v1/pets
+Content-Type: application/json
+x-client-type: mobile
+x-token: {{token}}
+
+{
+  "userId": "{{userId}}",
+  "name": "Max",
+  "species": "DOG",
+  "breed": "Golden Retriever",
+  "color": "Dorado",
+  "gender": "MALE",
+  "birthDate": "2023-05-14",
+  "ageYears": 3,
+  "weight": 28.5,
+  "size": "LARGE",
+  "photoUrl": ""
+}
