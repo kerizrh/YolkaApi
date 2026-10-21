@@ -4,6 +4,7 @@ import com.google.auth.oauth2.GoogleCredentials;
 import com.google.firebase.FirebaseApp;
 import com.google.firebase.FirebaseOptions;
 import com.google.firebase.messaging.FirebaseMessaging;
+import com.google.firebase.messaging.FirebaseMessagingException;
 import com.google.firebase.messaging.Message;
 import com.google.firebase.messaging.Notification;
 import com.yolka.config.EnvsConfig;
@@ -71,6 +72,9 @@ public class FirebaseAdminHelper {
 				builder.putAllData(data);
 			}
 			return FirebaseMessaging.getInstance().send(builder.build());
+		} catch (FirebaseMessagingException e) {
+			log.error("FCM service error [code={}]: {}", e.getMessagingErrorCode(), e.getMessage());
+			throw CustomError.internalServer("Error sending FCM push notification: " + e.getMessage(), "FCM_SEND_ERROR");
 		} catch (Exception e) {
 			log.error("Error sending FCM message: {}", e.getMessage());
 			throw CustomError.internalServer("Error sending FCM push notification: " + e.getMessage(), "FCM_SEND_ERROR");

@@ -109,12 +109,17 @@ public class NotificationsService {
 					if (notif.getPetName() != null) payload.put("petName", notif.getPetName());
 
 					if (user.getFcmToken() != null && !user.getFcmToken().isBlank()) {
-						firebaseAdminHelper.sendPushNotification(
-								user.getFcmToken(),
-								notif.getTitle(),
-								notif.getBody(),
-								payload
-						);
+						try {
+							firebaseAdminHelper.sendPushNotification(
+									user.getFcmToken(),
+									notif.getTitle(),
+									notif.getBody(),
+									payload
+							);
+						} catch (Exception pushEx) {
+							log.warn("FCM push delivery failed for notification {} to user {}: {}",
+									notif.getId(), user.getId(), pushEx.getMessage());
+						}
 					}
 				}
 
