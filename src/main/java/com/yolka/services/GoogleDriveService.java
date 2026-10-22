@@ -87,6 +87,8 @@ public class GoogleDriveService {
 			FileList result = driveService.files().list()
 					.setQ("mimeType = 'application/vnd.google-apps.folder' and name = 'Yolka_Storage' and trashed = false")
 					.setSpaces("drive")
+					.setSupportsAllDrives(true)
+					.setIncludeItemsFromAllDrives(true)
 					.setFields("files(id, name)")
 					.execute();
 
@@ -99,6 +101,7 @@ public class GoogleDriveService {
 			folderMetadata.setMimeType("application/vnd.google-apps.folder");
 
 			File createdFolder = driveService.files().create(folderMetadata)
+					.setSupportsAllDrives(true)
 					.setFields("id")
 					.execute();
 			return createdFolder.getId();
@@ -122,6 +125,7 @@ public class GoogleDriveService {
 
 			InputStreamContent mediaContent = new InputStreamContent(mimeType, inputStream);
 			File uploadedFile = driveService.files().create(fileMetadata, mediaContent)
+					.setSupportsAllDrives(true)
 					.setFields("id, name, webViewLink, webContentLink, size")
 					.execute();
 
@@ -132,7 +136,9 @@ public class GoogleDriveService {
 					Permission permission = new Permission()
 							.setType("anyone")
 							.setRole("reader");
-					driveService.permissions().create(uploadedFile.getId(), permission).execute();
+					driveService.permissions().create(uploadedFile.getId(), permission)
+							.setSupportsAllDrives(true)
+							.execute();
 				} catch (Exception e) {
 					log.warn("Could not set public permission on Drive file {}: {}", uploadedFile.getId(), e.getMessage());
 				}
@@ -157,7 +163,9 @@ public class GoogleDriveService {
 			throw CustomError.internalServer("Google Drive no está configurado", "DRIVE_NOT_CONFIGURED");
 		}
 		try {
-			driveService.files().get(fileId).executeMediaAndDownloadTo(outputStream);
+			driveService.files().get(fileId)
+					.setSupportsAllDrives(true)
+					.executeMediaAndDownloadTo(outputStream);
 		} catch (Exception e) {
 			log.error("Error downloading file from Google Drive: {}", e.getMessage());
 			throw CustomError.internalServer("Error al descargar archivo de Google Drive: " + e.getMessage(), "DRIVE_DOWNLOAD_ERROR");
@@ -169,7 +177,9 @@ public class GoogleDriveService {
 			return;
 		}
 		try {
-			driveService.files().delete(fileId).execute();
+			driveService.files().delete(fileId)
+					.setSupportsAllDrives(true)
+					.execute();
 		} catch (Exception e) {
 			log.warn("Could not delete Drive file {}: {}", fileId, e.getMessage());
 		}
