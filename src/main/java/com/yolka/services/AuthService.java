@@ -199,6 +199,10 @@ public class AuthService {
 			throw CustomError.unauthorized("Credenciales inválidas", "INVALID_CREDENTIALS");
 		}
 
+		if (!user.isConfirmed()) {
+			throw CustomError.forbidden("Debes confirmar tu correo electrónico antes de ingresar a Yolka", "ACCOUNT_NOT_CONFIRMED");
+		}
+
 		updateUserDevice(user, request.deviceId(), request.deviceToken());
 		user.setUpdatedAt(Instant.now());
 		user = userRepository.save(user);
