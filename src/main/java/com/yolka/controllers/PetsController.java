@@ -108,4 +108,31 @@ public class PetsController {
 	) {
 		return ResponseEntity.ok(Map.of("success", true, "pet", petsService.toggleReminder(id, reminderId, completed)));
 	}
+
+	@PutMapping("/{id}/vaccines/{vaccineId}")
+	public ResponseEntity<Map<String, Object>> updateVaccine(
+			@PathVariable String id,
+			@PathVariable String vaccineId,
+			@Valid @RequestBody VaccineRequest request
+	) {
+		return ResponseEntity.ok(Map.of("success", true, "pet", petsService.updateVaccine(id, vaccineId, request)));
+	}
+
+	@PutMapping("/{id}/dewormings/{dewormingId}")
+	public ResponseEntity<Map<String, Object>> updateDeworming(
+			@PathVariable String id,
+			@PathVariable String dewormingId,
+			@Valid @RequestBody DewormingRequest request
+	) {
+		return ResponseEntity.ok(Map.of("success", true, "pet", petsService.updateDeworming(id, dewormingId, request)));
+	}
+
+	@PutMapping("/{id}/appointments/{appointmentId}")
+	public ResponseEntity<Map<String, Object>> updateAppointment(
+			@PathVariable String id,
+			@PathVariable String appointmentId,
+			@Valid @RequestBody AppointmentRequest request
+	) {
+		return ResponseEntity.ok(Map.of("success", true, "pet", petsService.updateAppointment(id, appointmentId, request)));
+	}
 }

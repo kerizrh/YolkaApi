@@ -266,4 +266,60 @@ public class PetsService {
 		pet.setUpdatedAt(Instant.now());
 		return petRepository.save(pet);
 	}
+
+	public PetDocument updateVaccine(String petId, String vaccineId, VaccineRequest request) {
+		PetDocument pet = getPetById(petId);
+		if (pet.getVaccines() != null) {
+			for (VaccineRecord rec : pet.getVaccines()) {
+				if (!rec.isDeleted() && vaccineId.equals(rec.getId())) {
+					rec.setVaccineName(request.vaccineName().trim());
+					rec.setApplicationDate(request.applicationDate().trim());
+					rec.setNextDueDate(request.nextDueDate() != null ? request.nextDueDate().trim() : "");
+					rec.setNotes(request.notes() != null ? request.notes().trim() : "");
+					break;
+				}
+			}
+		}
+		pet.setUpdatedAt(Instant.now());
+		return petRepository.save(pet);
+	}
+
+	public PetDocument updateDeworming(String petId, String dewormingId, DewormingRequest request) {
+		PetDocument pet = getPetById(petId);
+		if (pet.getDewormings() != null) {
+			for (DewormingRecord rec : pet.getDewormings()) {
+				if (!rec.isDeleted() && dewormingId.equals(rec.getId())) {
+					rec.setType(request.type().trim().toUpperCase());
+					rec.setProductName(request.productName().trim());
+					rec.setApplicationDate(request.applicationDate().trim());
+					rec.setNextDueDate(request.nextDueDate() != null ? request.nextDueDate().trim() : "");
+					rec.setNotes(request.notes() != null ? request.notes().trim() : "");
+					break;
+				}
+			}
+		}
+		pet.setUpdatedAt(Instant.now());
+		return petRepository.save(pet);
+	}
+
+	public PetDocument updateAppointment(String petId, String appointmentId, AppointmentRequest request) {
+		PetDocument pet = getPetById(petId);
+		if (pet.getAppointments() != null) {
+			for (AppointmentRecord rec : pet.getAppointments()) {
+				if (!rec.isDeleted() && appointmentId.equals(rec.getId())) {
+					rec.setClinicName(request.clinicName().trim());
+					rec.setVeterinarianName(request.veterinarianName() != null ? request.veterinarianName().trim() : "");
+					rec.setReason(request.reason().trim());
+					rec.setDateTime(request.dateTime().trim());
+					rec.setNotes(request.notes() != null ? request.notes().trim() : "");
+					if (request.completed() != null) {
+						rec.setCompleted(request.completed());
+					}
+					break;
+				}
+			}
+		}
+		pet.setUpdatedAt(Instant.now());
+		return petRepository.save(pet);
+	}
 }
