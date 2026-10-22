@@ -28,8 +28,15 @@ public class MailService {
 
 		try {
 			JavaMailSenderImpl sender = new JavaMailSenderImpl();
-			sender.setHost(envsConfig.getSmtpHost().replace("\"", "").trim());
-			sender.setPort(envsConfig.getSmtpPort());
+			String host = envsConfig.getSmtpHost() != null && !envsConfig.getSmtpHost().isBlank()
+					? envsConfig.getSmtpHost().replace("\"", "").trim()
+					: "smtp.gmail.com";
+			if (host.startsWith("${") || host.contains(":")) {
+				host = "smtp.gmail.com";
+			}
+			sender.setHost(host);
+			int port = envsConfig.getSmtpPort() > 0 ? envsConfig.getSmtpPort() : 587;
+			sender.setPort(port);
 			sender.setUsername(rawUser);
 			sender.setPassword(rawPass);
 			sender.setDefaultEncoding("UTF-8");

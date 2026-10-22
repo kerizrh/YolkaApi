@@ -49,16 +49,16 @@ public class EnvsConfig {
 	@Value("${BACKUP_STORAGE_PATH:}")
 	private String backupStoragePath;
 
-	@Value("${SMTP_HOST:${MAIL_HOST:}")
+	@Value("${SMTP_HOST:smtp.gmail.com}")
 	private String smtpHost;
 
-	@Value("${SMTP_PORT:}")
+	@Value("${SMTP_PORT:587}")
 	private int smtpPort;
 
-	@Value("${SMTP_USER:${MAIL_USER:}")
+	@Value("${SMTP_USER:}")
 	private String smtpUser;
 
-	@Value("${SMTP_PASS:${MAIL_PASSWORD:}")
+	@Value("${SMTP_PASS:}")
 	private String smtpPass;
 
 	private final List<String> allowedGoogleClientIds = new ArrayList<>();
