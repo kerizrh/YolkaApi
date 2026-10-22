@@ -76,6 +76,13 @@
 			<version>${google.api.client.version}</version>
 		</dependency>
 
+		<!-- Google Drive API Client -->
+		<dependency>
+			<groupId>com.google.apis</groupId>
+			<artifactId>google-api-services-drive</artifactId>
+			<version>v3-rev20250511-2.0.0</version>
+		</dependency>
+
 		<dependency>
 			<groupId>org.springframework.boot</groupId>
 			<artifactId>spring-boot-devtools</artifactId>

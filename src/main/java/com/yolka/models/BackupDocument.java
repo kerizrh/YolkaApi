@@ -37,6 +37,8 @@ public class BackupDocument {
 	private String fileName;
 	private long fileSize;
 	private String type;
+	private String driveFileId;
+	private String driveWebViewLink;
 
 	@Indexed
 	@Builder.Default

@@ -43,6 +43,7 @@ public class BackupsService {
 	private final CryptoHelper cryptoHelper;
 	private final UuidGeneratorHelper uuidGeneratorHelper;
 	private final EnvsConfig envsConfig;
+	private final GoogleDriveService googleDriveService;
 	private final ObjectMapper objectMapper = new ObjectMapper();
 
 	public Map<String, Object> createCloudBackup(String userId) {
@@ -78,7 +79,28 @@ public class BackupsService {
 					Files.deleteIfExists(dir.resolve(prev.getFileName()));
 				} catch (Exception ignored) {
 				}
+				if (prev.getDriveFileId() != null && googleDriveService.isConfigured()) {
+					googleDriveService.deleteFile(prev.getDriveFileId());
+				}
 			});
+
+			String driveFileId = null;
+			String driveWebViewLink = null;
+			if (googleDriveService.isConfigured()) {
+				try {
+					var driveResult = googleDriveService.uploadFile(
+							fileName,
+							"application/octet-stream",
+							new ByteArrayInputStream(fileContent.getBytes(StandardCharsets.UTF_8)),
+							false
+					);
+					driveFileId = driveResult.fileId();
+					driveWebViewLink = driveResult.webViewLink();
+					log.info("Encrypted backup uploaded to Google Drive. FileId: {}", driveFileId);
+				} catch (Exception ex) {
+					log.warn("Failed to upload backup to Google Drive, preserved locally: {}", ex.getMessage());
+				}
+			}
 
 			Instant now = Instant.now();
 			String newBackupId = uuidGeneratorHelper.generate();
@@ -93,6 +115,10 @@ public class BackupsService {
 			backupDoc.setFileName(fileName);
 			backupDoc.setFileSize(Files.size(filePath));
 			backupDoc.setType("cloud_encrypted_v2");
+			if (driveFileId != null) {
+				backupDoc.setDriveFileId(driveFileId);
+				backupDoc.setDriveWebViewLink(driveWebViewLink);
+			}
 			backupDoc.setUpdatedAt(now);
 			backupDoc = backupRepository.save(backupDoc);
 
@@ -120,11 +146,17 @@ public class BackupsService {
 
 		try {
 			Path filePath = Path.of(envsConfig.getBackupStoragePath()).resolve(backupDoc.getFileName());
-			if (!Files.exists(filePath)) {
+			String encryptedContent;
+			if (Files.exists(filePath)) {
+				encryptedContent = Files.readString(filePath, StandardCharsets.UTF_8);
+			} else if (backupDoc.getDriveFileId() != null && googleDriveService.isConfigured()) {
+				log.info("Local backup file not found, downloading from Google Drive ({})", backupDoc.getDriveFileId());
+				ByteArrayOutputStream baos = new ByteArrayOutputStream();
+				googleDriveService.downloadFile(backupDoc.getDriveFileId(), baos);
+				encryptedContent = baos.toString(StandardCharsets.UTF_8);
+			} else {
 				throw CustomError.notFound("Archivo físico de respaldo no encontrado", "BACKUP_FILE_MISSING");
 			}
-
-			String encryptedContent = Files.readString(filePath, StandardCharsets.UTF_8);
 			byte[] decryptedGzip = cryptoHelper.decryptBuffer(encryptedContent);
 			byte[] unzippedJson = gzipDecompress(decryptedGzip);
 

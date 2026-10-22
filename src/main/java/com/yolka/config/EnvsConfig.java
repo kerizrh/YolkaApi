@@ -49,6 +49,12 @@ public class EnvsConfig {
 	@Value("${BACKUP_STORAGE_PATH:}")
 	private String backupStoragePath;
 
+	@Value("${GOOGLE_DRIVE_FOLDER_ID:}")
+	private String googleDriveFolderId;
+
+	@Value("${GOOGLE_DRIVE_CREDENTIALS_JSON_PATH:}")
+	private String googleDriveCredentialsJsonPath;
+
 	@Value("${SMTP_HOST:smtp.gmail.com}")
 	private String smtpHost;
 
