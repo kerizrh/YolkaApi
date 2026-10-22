@@ -97,10 +97,12 @@ public class AuthService {
 
 		sendConfirmationEmail(newUser, false);
 
-		return issueTokensAndBuildResponse(
-				newUser,
-				request.deviceId(),
-				"Usuario registrado exitosamente. Hemos enviado un enlace y código de confirmación a tu correo electrónico."
+		return new AuthResponse(
+				true,
+				UserResponse.fromDocument(newUser),
+				null,
+				null,
+				"Usuario registrado exitosamente. Hemos enviado un código de confirmación a tu correo electrónico."
 		);
 	}
 
