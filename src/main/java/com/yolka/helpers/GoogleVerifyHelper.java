@@ -35,7 +35,7 @@ public class GoogleVerifyHelper {
 	public GoogleUserPayload verifyGoogleSignIn(String idTokenString, String authorizationCode) {
 		String tokenToVerify = idTokenString;
 
-		// 1. Si enviaron authorizationCode y tenemos clientSecret configurado, intercambiar por id_token (estilo Kafoo)
+		// 1. Si enviaron authorizationCode y tenemos clientSecret configurado, intercambiar por id_token 
 		if ((tokenToVerify == null || tokenToVerify.isBlank())
 				&& authorizationCode != null && !authorizationCode.isBlank()
 				&& envsConfig.getGoogleWebClientSecret() != null && !envsConfig.getGoogleWebClientSecret().isBlank()) {
